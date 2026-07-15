@@ -23,11 +23,11 @@ export function CTA() {
                 deals that matter — with the data to back every offer.
               </p>
               <div className="mt-9 flex flex-col sm:flex-row items-center gap-3">
-                <Button href="#pricing" variant="primary" size="lg">
+                <Button href="/signup" variant="primary" size="lg">
                   Get Started
                   <ArrowRight className="h-4 w-4" />
                 </Button>
-                <Button href="#login" variant="secondary" size="lg">
+                <Button href="mailto:sales@realoffer.ai" variant="secondary" size="lg">
                   Talk to Sales
                 </Button>
               </div>

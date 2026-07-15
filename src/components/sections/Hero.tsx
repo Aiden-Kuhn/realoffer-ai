@@ -44,11 +44,11 @@ export function Hero() {
 
           <Reveal delay={0.24}>
             <div className="mt-10 flex flex-col sm:flex-row items-center gap-3">
-              <Button href="#get-started" variant="primary" size="lg">
+              <Button href="/signup" variant="primary" size="lg">
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button href="#demo" variant="secondary" size="lg">
+              <Button href="/dashboard/analyze" variant="secondary" size="lg">
                 <Play className="h-4 w-4" />
                 Watch Demo
               </Button>

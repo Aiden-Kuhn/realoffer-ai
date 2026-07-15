@@ -49,7 +49,7 @@ export function Pricing() {
                 </div>
 
                 <Button
-                  href="#get-started"
+                  href={plan.cta === "Contact Sales" ? "mailto:sales@realoffer.ai" : "/signup"}
                   variant={plan.featured ? "primary" : "secondary"}
                   size="lg"
                   className="mt-7 w-full"

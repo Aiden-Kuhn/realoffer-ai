@@ -10,7 +10,6 @@ import {
   FileBarChart,
   ShieldCheck,
   Zap,
-  Clock,
   type LucideIcon,
 } from "lucide-react";
 
@@ -220,7 +219,7 @@ export const faqs: FaqItem[] = [
 ];
 
 export const trustPoints = [
-  { icon: ShieldCheck, label: "Bank-level data security" },
-  { icon: Clock, label: "Results in under 10 seconds" },
-  { icon: Zap, label: "No spreadsheets required" },
+  { icon: ShieldCheck, label: "Your data stays in your browser in demo mode" },
+  { icon: Zap, label: "Instant, transparent calculations" },
+  { icon: Calculator, label: "No spreadsheets required" },
 ];

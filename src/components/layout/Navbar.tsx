@@ -55,10 +55,10 @@ export function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-2">
-            <Button href="#login" variant="ghost" size="md">
+            <Button href="/login" variant="ghost" size="md">
               Login
             </Button>
-            <Button href="#get-started" variant="primary" size="md">
+            <Button href="/signup" variant="primary" size="md">
               Get Started
             </Button>
           </div>
@@ -95,10 +95,10 @@ export function Navbar() {
                 </a>
               ))}
               <div className="h-px bg-border my-3" />
-              <Button href="#login" variant="secondary" size="md" className="w-full">
+              <Button href="/login" variant="secondary" size="md" className="w-full">
                 Login
               </Button>
-              <Button href="#get-started" variant="primary" size="md" className="w-full mt-2">
+              <Button href="/signup" variant="primary" size="md" className="w-full mt-2">
                 Get Started
               </Button>
             </div>
