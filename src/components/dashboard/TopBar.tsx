@@ -12,7 +12,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
   const { title, breadcrumbs } = usePageHeader();
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface/60 px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface/70 backdrop-blur-md px-4 sm:px-6">
       <button
         type="button"
         onClick={onOpenMobileNav}
@@ -38,7 +38,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
 
       <Link
         href="/dashboard/analyze"
-        className="hidden sm:inline-flex items-center gap-1.5 h-9 shrink-0 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 transition-colors"
+        className="hidden sm:inline-flex items-center gap-1.5 h-9 shrink-0 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
       >
         <Plus className="h-4 w-4" />
         Analyze New Deal
@@ -46,7 +46,7 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
       <Link
         href="/dashboard/analyze"
         aria-label="Analyze new deal"
-        className="sm:hidden flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shrink-0"
+        className="sm:hidden flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shrink-0 hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
       >
         <Plus className="h-4 w-4" />
       </Link>

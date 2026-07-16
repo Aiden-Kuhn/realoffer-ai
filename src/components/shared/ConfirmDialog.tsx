@@ -51,14 +51,14 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="h-10 rounded-full px-4 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+            className="h-10 rounded-full px-4 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 active:scale-[0.98] transition-all duration-150"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`h-10 rounded-full px-4 text-sm font-medium transition-colors ${
+            className={`h-10 rounded-full px-4 text-sm font-medium active:scale-[0.98] transition-all duration-150 ${
               destructive ? "bg-red-500 text-white hover:bg-red-400" : "bg-white text-black hover:bg-white/90"
             }`}
           >

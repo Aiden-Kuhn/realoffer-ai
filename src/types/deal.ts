@@ -39,6 +39,11 @@ export type DealAssumptions = {
   maoMethod: MaoMethod;
 };
 
+/** Derived from property.source at creation time; carried on the deal so
+ * the saved-deals list can label real vs. demo analyses without re-deriving
+ * it from a possibly-refreshed property record. */
+export type DealDataMode = "real" | "demo";
+
 export type Deal = {
   id: string;
   createdAt: string;
@@ -51,4 +56,5 @@ export type Deal = {
   repairEstimate: RepairEstimateState;
   results: DealFinancialResults;
   isSample?: boolean;
+  dataMode: DealDataMode;
 };

@@ -20,6 +20,8 @@ export type ManualPropertyOverrides = {
 type ManualPropertyFormProps = {
   onSubmitAddress: (address: NormalizedAddress, overrides: ManualPropertyOverrides) => void;
   isSubmitting: boolean;
+  initialValues?: Partial<{ line1: string; city: string; state: string; zip: string }>;
+  mode?: "rentcast" | "demo";
 };
 
 const PROPERTY_TYPE_OPTIONS: Array<{ value: ManualPropertyFormValues["propertyType"]; label: string }> = [
@@ -31,14 +33,20 @@ const PROPERTY_TYPE_OPTIONS: Array<{ value: ManualPropertyFormValues["propertyTy
   { value: "land", label: "Land" },
 ];
 
-export function ManualPropertyForm({ onSubmitAddress, isSubmitting }: ManualPropertyFormProps) {
+export function ManualPropertyForm({ onSubmitAddress, isSubmitting, initialValues, mode = "demo" }: ManualPropertyFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<ManualPropertyFormInput, unknown, ManualPropertyFormValues>({
     resolver: zodResolver(manualPropertySchema),
-    defaultValues: { propertyType: "single_family" },
+    defaultValues: {
+      propertyType: "single_family",
+      line1: initialValues?.line1 ?? "",
+      city: initialValues?.city ?? "",
+      state: initialValues?.state ?? "",
+      zip: initialValues?.zip ?? "",
+    },
   });
 
   function onSubmit(values: ManualPropertyFormValues) {
@@ -110,8 +118,9 @@ export function ManualPropertyForm({ onSubmitAddress, isSubmitting }: ManualProp
       </div>
 
       <div className="rounded-xl border border-border bg-surface-2 px-4 py-3 text-xs leading-relaxed text-muted">
-        Any fields you leave blank will be filled in with deterministic demo data so you can still explore the full
-        analysis — the workspace will flag which values are simulated.
+        {mode === "rentcast"
+          ? "Any fields you leave blank will be looked up through RentCast when available. Fields we still can't find will show as \"Not available\" rather than a guess."
+          : "Any fields you leave blank will be filled in with deterministic demo data so you can still explore the full analysis — the workspace will flag which values are simulated."}
       </div>
 
       <button

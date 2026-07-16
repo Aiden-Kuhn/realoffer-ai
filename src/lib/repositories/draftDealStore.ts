@@ -1,3 +1,4 @@
+import { normalizeLegacyDeal } from "@/lib/repositories/dealMigration";
 import type { Deal } from "@/types/deal";
 
 /**
@@ -29,7 +30,7 @@ export function getDraftDeal(id: string): Deal | null {
   let result: Deal | null = null;
   try {
     const raw = window.sessionStorage.getItem(`${KEY_PREFIX}${id}`);
-    result = raw ? (JSON.parse(raw) as Deal) : null;
+    result = raw ? normalizeLegacyDeal(JSON.parse(raw)) : null;
   } catch {
     result = null;
   }

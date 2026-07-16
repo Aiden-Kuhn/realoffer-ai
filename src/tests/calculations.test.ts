@@ -196,7 +196,17 @@ describe("MockPropertyDataProvider determinism", () => {
     const first = await provider.getPropertyByAddress(address);
     const second = await provider.getPropertyByAddress(address);
 
-    expect(second).toEqual(first);
+    expect(first.status).toBe("ok");
+    expect(second.status).toBe("ok");
+    if (first.status !== "ok" || second.status !== "ok") return;
+
+    // lastUpdated is intentionally "now" on every call, not part of the
+    // determinism guarantee — compare everything else deeply.
+    const { lastUpdated: firstUpdated, ...firstRest } = first.property;
+    const { lastUpdated: secondUpdated, ...secondRest } = second.property;
+    expect(secondRest).toEqual(firstRest);
+    expect(Date.parse(firstUpdated)).not.toBeNaN();
+    expect(Date.parse(secondUpdated)).not.toBeNaN();
   });
 
   it("returns different profiles for different addresses", async () => {
@@ -208,6 +218,20 @@ describe("MockPropertyDataProvider determinism", () => {
       normalizeManualAddress({ line1: "902 Cedar Point Ave", city: "Tampa", state: "FL", zip: "33602" }),
     );
 
-    expect(a.arvExpectedCents).not.toBe(b.arvExpectedCents);
+    expect(a.status).toBe("ok");
+    expect(b.status).toBe("ok");
+    if (a.status !== "ok" || b.status !== "ok") return;
+    expect(a.property.arvExpectedCents).not.toBe(b.property.arvExpectedCents);
+  });
+
+  it("always resolves with status ok and source simulated", async () => {
+    const provider = new MockPropertyDataProvider();
+    const result = await provider.getPropertyByAddress(
+      normalizeManualAddress({ line1: "1 Test St", city: "Testville", state: "TX", zip: "78701" }),
+    );
+    expect(result.status).toBe("ok");
+    if (result.status === "ok") {
+      expect(result.property.source).toBe("simulated");
+    }
   });
 });

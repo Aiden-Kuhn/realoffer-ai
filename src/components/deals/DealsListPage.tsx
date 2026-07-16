@@ -38,7 +38,26 @@ export function DealsListPage() {
     return result;
   }, [deals, query, statusFilter, sortBy, sortDirection]);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <div className="h-7 w-40 rounded-md bg-white/5 animate-pulse" />
+          <div className="mt-2 h-4 w-72 rounded-md bg-white/5 animate-pulse" />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="h-11 flex-1 max-w-sm rounded-lg bg-white/5 animate-pulse" />
+          <div className="h-11 sm:w-48 rounded-lg bg-white/5 animate-pulse" />
+          <div className="h-11 sm:w-48 rounded-lg bg-white/5 animate-pulse" />
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-4 flex flex-col gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,7 +114,7 @@ export function DealsListPage() {
             <button
               type="button"
               onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-              className="h-11 rounded-lg border border-border bg-surface px-3.5 text-sm text-white/70 hover:text-white transition-colors"
+              className="h-11 rounded-lg border border-border bg-surface px-3.5 text-sm text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150"
               aria-label="Toggle sort direction"
             >
               {sortDirection === "asc" ? "Asc" : "Desc"}

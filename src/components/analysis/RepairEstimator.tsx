@@ -48,7 +48,7 @@ export function RepairEstimator({ repairEstimate, squareFootage, onChange }: Rep
         <h2 className="text-sm font-semibold text-white">Repair estimator</h2>
         <span className="text-sm font-semibold text-white tabular-nums">{formatCents(total)}</span>
       </div>
-      <p className="text-xs text-muted mb-4">
+      <p className="text-xs text-muted mb-5">
         Rough estimates only — actual repair costs vary by location, labor market, materials, and true property condition.
       </p>
 
@@ -100,7 +100,7 @@ export function RepairEstimator({ repairEstimate, squareFootage, onChange }: Rep
           {REPAIR_CATEGORIES.map((category) => {
             const item = repairEstimate.categories[category];
             return (
-              <div key={category} className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <div key={category} className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-white/[0.02]">
                 <label className="flex items-center gap-2.5 w-40 shrink-0 cursor-pointer">
                   <input
                     type="checkbox"

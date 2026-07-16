@@ -12,9 +12,10 @@ import type { NormalizedAddress } from "@/lib/property/types";
 type ListingLinkFormProps = {
   onSubmitAddress: (address: NormalizedAddress) => void;
   isSubmitting: boolean;
+  mode?: "rentcast" | "demo";
 };
 
-export function ListingLinkForm({ onSubmitAddress, isSubmitting }: ListingLinkFormProps) {
+export function ListingLinkForm({ onSubmitAddress, isSubmitting, mode = "demo" }: ListingLinkFormProps) {
   const {
     register,
     handleSubmit,
@@ -57,8 +58,9 @@ export function ListingLinkForm({ onSubmitAddress, isSubmitting }: ListingLinkFo
       </Field>
 
       <div className="rounded-xl border border-border bg-surface-2 px-4 py-3 text-xs leading-relaxed text-muted">
-        This demo does not fetch or scrape Zillow. It only reads the address out of the URL you paste, then generates
-        deterministic demo property data and comparable sales for that address so you can explore the analysis workflow.
+        {mode === "rentcast"
+          ? "This never fetches or scrapes the Zillow page. It only reads the address out of the URL you paste, then looks that address up through RentCast for real property, listing, and valuation data."
+          : "This demo does not fetch or scrape Zillow. It only reads the address out of the URL you paste, then generates deterministic demo property data and comparable sales for that address so you can explore the analysis workflow."}
       </div>
 
       <button

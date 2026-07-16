@@ -45,5 +45,6 @@ export function createDealFromProperty(property: PropertyRecord, settings: AppSe
     assumptions,
     repairEstimate,
     results,
+    dataMode: property.source === "rentcast" ? "real" : "demo",
   };
 }

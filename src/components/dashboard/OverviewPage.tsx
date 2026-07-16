@@ -38,7 +38,31 @@ export function OverviewPage() {
     }
   }
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="h-8 w-64 rounded-md bg-white/5 animate-pulse" />
+            <div className="mt-2 h-4 w-56 rounded-md bg-white/5 animate-pulse" />
+          </div>
+          <div className="h-11 w-44 rounded-full bg-white/5 animate-pulse shrink-0" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-[124px] rounded-2xl border border-border bg-surface p-5">
+              <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
+              <div className="mt-6 h-7 w-20 rounded bg-white/5 animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-72 rounded-2xl border border-border bg-surface animate-pulse" />
+          <div className="h-72 rounded-2xl border border-border bg-surface animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -49,7 +73,7 @@ export function OverviewPage() {
         </div>
         <Link
           href="/dashboard/analyze"
-          className="inline-flex items-center justify-center gap-2 h-11 rounded-full bg-white px-5 text-sm font-medium text-black hover:bg-white/90 transition-colors shrink-0"
+          className="inline-flex items-center justify-center gap-2 h-11 rounded-full bg-white px-5 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150 shrink-0"
         >
           <Plus className="h-4 w-4" />
           Analyze New Deal
@@ -65,7 +89,7 @@ export function OverviewPage() {
             <div className="flex flex-col sm:flex-row items-center gap-3">
               <Link
                 href="/dashboard/analyze"
-                className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 transition-colors"
+                className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
               >
                 Analyze a property
               </Link>
@@ -73,7 +97,7 @@ export function OverviewPage() {
                 type="button"
                 onClick={handleLoadSamples}
                 disabled={loadingSamples}
-                className="inline-flex items-center gap-2 h-10 rounded-full border border-border px-4 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 h-10 rounded-full border border-border px-4 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
               >
                 <Sparkles className="h-4 w-4" />
                 {loadingSamples ? "Loading sample deals..." : "Load sample deals"}
@@ -144,7 +168,7 @@ export function OverviewPage() {
                       </div>
                       <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-3"
+                          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-3 transition-[width] duration-500 ease-out"
                           style={{ width: `${Math.round((count / stats.totalDeals) * 100)}%` }}
                         />
                       </div>

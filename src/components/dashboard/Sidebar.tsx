@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsLeft, ChevronsRight, LogOut, Sparkles } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, LogOut, Sparkles, Satellite, FlaskConical } from "lucide-react";
 import { DASHBOARD_NAV_ITEMS } from "@/config/dashboardNav";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { usePropertyDataMode } from "@/hooks/usePropertyDataMode";
 
 type SidebarProps = {
   collapsed: boolean;
@@ -15,6 +16,7 @@ type SidebarProps = {
 export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const propertyDataMode = usePropertyDataMode();
 
   function handleExitDemo() {
     signOut();
@@ -48,13 +50,16 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
         {DASHBOARD_NAV_ITEMS.map((item) => {
           const active = pathname === item.href;
           return (
-            <li key={item.href}>
+            <li key={item.href} className="relative">
+              {active ? (
+                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent-3" />
+              ) : null}
               <Link
                 href={item.href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 title={collapsed ? item.label : undefined}
-                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
+                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
                   active
                     ? "bg-white/[0.07] text-white"
                     : "text-white/55 hover:text-white hover:bg-white/[0.04]"
@@ -76,7 +81,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
           type="button"
           onClick={onToggleCollapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={`hidden md:flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white/45 hover:text-white hover:bg-white/[0.04] transition-colors ${
+          className={`hidden md:flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium text-white/45 hover:text-white hover:bg-white/[0.04] active:scale-[0.98] transition-all duration-150 ${
             collapsed ? "justify-center" : ""
           }`}
         >
@@ -85,9 +90,25 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
         </button>
 
         {!collapsed ? (
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-accent-3/25 bg-accent-3/10 px-2.5 py-1 text-[11px] font-semibold text-accent-3">
-            Demo Mode
-          </span>
+          <div className="flex flex-col gap-1.5">
+            <span
+              className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                propertyDataMode === "rentcast"
+                  ? "border-emerald-400/25 bg-emerald-400/10 text-emerald-300"
+                  : "border-accent-3/25 bg-accent-3/10 text-accent-3"
+              }`}
+              title="Where property, listing, valuation, and comparable data comes from"
+            >
+              {propertyDataMode === "rentcast" ? <Satellite className="h-3 w-3" /> : <FlaskConical className="h-3 w-3" />}
+              {propertyDataMode === "rentcast" ? "RentCast Live Data" : "Demo Property Data"}
+            </span>
+            <span
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/50"
+              title="Login is simulated in this build — no real accounts or passwords"
+            >
+              Demo Auth
+            </span>
+          </div>
         ) : null}
 
         <div className={`flex items-center gap-2.5 rounded-lg px-1 py-1.5 ${collapsed ? "justify-center" : ""}`}>
@@ -105,7 +126,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
         <button
           type="button"
           onClick={handleExitDemo}
-          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.04] transition-colors ${
+          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.04] active:scale-[0.98] transition-all duration-150 ${
             collapsed ? "justify-center" : ""
           }`}
         >

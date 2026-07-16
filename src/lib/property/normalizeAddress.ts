@@ -82,3 +82,24 @@ export function normalizeSlugAddress(rawSlug: string): NormalizedAddress {
     formatted: formatted || rawSlug.toUpperCase(),
   };
 }
+
+/**
+ * Best-effort split of a comma-separated formatted address (e.g. a provider's
+ * "123 Main St, Denver, CO 80202") into manual-entry form fields. Used only
+ * to pre-fill the manual form after an ambiguous-match confirmation — never
+ * to silently accept the address without the user reviewing it.
+ */
+export function parseFormattedAddressForPrefill(formattedAddress: string): ManualAddressInput {
+  const parts = formattedAddress.split(",").map((p) => p.trim());
+  const line1 = parts[0] ?? "";
+  const city = parts[1] ?? "";
+  const stateZip = parts[2] ?? "";
+  const match = stateZip.match(/^([A-Za-z]{2})\s+(\d{5})/);
+
+  return {
+    line1,
+    city,
+    state: match ? match[1] : "",
+    zip: match ? match[2] : "",
+  };
+}

@@ -9,6 +9,7 @@ import type {
   ComparableSale,
   NormalizedAddress,
   PropertyDataProvider,
+  PropertyDataResult,
   PropertyProfile,
   PropertyRecord,
   PropertyType,
@@ -76,7 +77,10 @@ function buildComparables(
       bedrooms: randomIntBetween(rng, 2, 5),
       bathrooms: randomIntBetween(rng, 2, 4),
       similarityScore: randomIntBetween(rng, 62, 98),
+      similaritySource: "calculated",
+      saleType: "sold",
       source: "simulated",
+      providerId: null,
       included: true,
     });
   }
@@ -153,31 +157,49 @@ function generateForProfile(
 
   return {
     address,
-    listPriceCents,
     bedrooms,
     bathrooms,
     squareFootage,
     lotSizeSqft,
     yearBuilt,
     propertyType,
+    county: null,
+    latitude: null,
+    longitude: null,
+    lastSaleDate: null,
+    lastSalePriceCents: null,
+    taxAssessedValueCents: null,
+    annualPropertyTaxCents: null,
+    providerRecordId: null,
+    listPriceCents,
+    originalListPriceCents: listPriceCents,
+    listingStatus: listPriceCents !== null ? "Active" : null,
+    listedDate: null,
     daysOnMarket,
+    mlsId: null,
+    hoaFeeCents: null,
+    propertySubtype: null,
     description,
-    source: "simulated",
-    confidence,
-    lastUpdated: new Date().toISOString(),
+    currentValueCents: null,
+    valuationRangeLowCents: null,
+    valuationRangeHighCents: null,
+    valuationDate: null,
     arvLowCents,
     arvExpectedCents,
     arvHighCents,
     suggestedRepairCostCents,
     comparables,
+    source: "simulated",
+    confidence,
+    lastUpdated: new Date().toISOString(),
     profile,
   };
 }
 
 export class MockPropertyDataProvider implements PropertyDataProvider {
-  async getPropertyByAddress(address: NormalizedAddress): Promise<PropertyRecord> {
+  async getPropertyByAddress(address: NormalizedAddress): Promise<PropertyDataResult> {
     const { profile, seed } = profileForAddress(address);
-    return generateForProfile(profile, seed, address);
+    return { status: "ok", property: generateForProfile(profile, seed, address) };
   }
 }
 

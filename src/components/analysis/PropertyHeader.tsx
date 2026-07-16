@@ -1,22 +1,9 @@
 import { MapPin } from "lucide-react";
 import type { PropertyRecord } from "@/lib/property/types";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { SourceBadge } from "@/components/shared/SourceBadge";
+import { PROPERTY_TYPE_LABELS, CONFIDENCE_LABELS } from "@/lib/property/labels";
 import type { DealPipelineStatus } from "@/types/deal";
-
-const PROPERTY_TYPE_LABELS: Record<PropertyRecord["propertyType"], string> = {
-  single_family: "Single Family",
-  condo: "Condo",
-  townhouse: "Townhouse",
-  multi_family: "Multi-Family",
-  manufactured: "Manufactured",
-  land: "Land",
-};
-
-const CONFIDENCE_LABELS: Record<PropertyRecord["confidence"], string> = {
-  high: "High confidence",
-  medium: "Medium confidence",
-  low: "Low confidence",
-};
 
 export function PropertyHeader({ property, status }: { property: PropertyRecord; status: DealPipelineStatus }) {
   return (
@@ -54,9 +41,13 @@ export function PropertyHeader({ property, status }: { property: PropertyRecord;
         {property.yearBuilt !== null ? (
           <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">Built {property.yearBuilt}</span>
         ) : null}
+        {property.county ? (
+          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">{property.county} County</span>
+        ) : null}
         <span className="rounded-full border border-accent-3/25 bg-accent-3/10 px-2.5 py-1 text-accent-3">
-          {CONFIDENCE_LABELS[property.confidence]} (simulated)
+          {CONFIDENCE_LABELS[property.confidence]}
         </span>
+        <SourceBadge kind={property.source === "rentcast" ? "provider_record" : "demo"} />
       </div>
     </div>
   );

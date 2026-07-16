@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Trash2, ArrowLeft, FileQuestion, AlertTriangle } from "lucide-react";
+import { Copy, Trash2, ArrowLeft, FileQuestion, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useMounted } from "@/hooks/useMounted";
@@ -13,8 +13,10 @@ import { buildDealFinancialResults, resolveSelectedArvCents } from "@/lib/calcul
 import { computeRepairTotalCents } from "@/lib/calculations/repairs";
 import { computeDealRisks } from "@/lib/calculations/risks";
 import { hasSufficientPropertyInfo } from "@/lib/property/completeness";
+import { analyzePropertyAddress } from "@/lib/property/providerSelection";
+import { describeProviderErrorCode } from "@/lib/property/errorMessages";
 import { PropertyHeader } from "@/components/analysis/PropertyHeader";
-import { DemoDataBanner } from "@/components/analysis/DemoDataBanner";
+import { DataSourceBanner } from "@/components/analysis/DataSourceBanner";
 import { PropertyOverview } from "@/components/analysis/PropertyOverview";
 import { AssumptionsForm } from "@/components/analysis/AssumptionsForm";
 import { ArvPanel } from "@/components/analysis/ArvPanel";
@@ -29,7 +31,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { textareaClasses } from "@/components/shared/Field";
 import { DEAL_PIPELINE_STATUSES, DEAL_PIPELINE_STATUS_LABELS, type Deal, type DealAssumptions, type DealPipelineStatus } from "@/types/deal";
 import type { RepairEstimateState } from "@/lib/calculations/repairs";
-import type { ComparableSale } from "@/lib/property/types";
+import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
 import { DealInputValidationError, type DealFinancialResults } from "@/lib/calculations/types";
 
 export function DealWorkspace({ id }: { id: string }) {
@@ -72,6 +74,7 @@ export function DealWorkspace({ id }: { id: string }) {
 function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean }) {
   const router = useRouter();
 
+  const [property, setProperty] = useState<PropertyRecord>(deal.property);
   const [assumptions, setAssumptions] = useState<DealAssumptions>(deal.assumptions);
   const [repairEstimate, setRepairEstimate] = useState<RepairEstimateState>(deal.repairEstimate);
   const [comparables, setComparables] = useState<ComparableSale[]>(deal.comparables);
@@ -81,13 +84,15 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const { results, calculationError } = useMemo<{
     results: DealFinancialResults | null;
     calculationError: string | null;
   }>(() => {
     try {
-      return { results: buildDealFinancialResults(deal.property, comparables, repairEstimate, assumptions), calculationError: null };
+      return { results: buildDealFinancialResults(property, comparables, repairEstimate, assumptions), calculationError: null };
     } catch (error) {
       const message =
         error instanceof DealInputValidationError
@@ -95,25 +100,35 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
           : "One of these numbers is out of a supported range.";
       return { results: null, calculationError: message };
     }
-  }, [deal.property, assumptions, repairEstimate, comparables]);
+  }, [property, assumptions, repairEstimate, comparables]);
 
   const arvCents = useMemo(
-    () => resolveSelectedArvCents(deal.property, comparables, assumptions.arvOverrideCents),
-    [deal.property, assumptions.arvOverrideCents, comparables],
+    () => resolveSelectedArvCents(property, comparables, assumptions.arvOverrideCents),
+    [property, assumptions.arvOverrideCents, comparables],
   );
 
   const repairCents = useMemo(
-    () => computeRepairTotalCents(repairEstimate, deal.property.squareFootage),
-    [repairEstimate, deal.property.squareFootage],
+    () => computeRepairTotalCents(repairEstimate, property.squareFootage),
+    [repairEstimate, property.squareFootage],
   );
 
-  const sufficientInfo = hasSufficientPropertyInfo(deal.property);
-  const risks = results ? computeDealRisks(deal.property, comparables, results) : [];
+  const sufficientInfo = hasSufficientPropertyInfo(property);
+  const risks = results ? computeDealRisks(property, comparables, results) : [];
 
   function handleSave() {
     if (!results) return;
     setIsSaving(true);
-    const toSave: Deal = { ...deal, status, notes, comparables, assumptions, repairEstimate, results };
+    const toSave: Deal = {
+      ...deal,
+      status,
+      notes,
+      property,
+      comparables,
+      assumptions,
+      repairEstimate,
+      results,
+      dataMode: property.source === "rentcast" ? "real" : "demo",
+    };
     dealRepository.save(toSave);
     clearDraftDeal(deal.id);
     setIsSaving(false);
@@ -132,6 +147,26 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     router.push("/dashboard/deals");
   }
 
+  async function handleRefreshPropertyData() {
+    setIsRefreshing(true);
+    setRefreshError(null);
+    try {
+      const result = await analyzePropertyAddress(property.address, { forceRefresh: true });
+      if (result.status === "ok") {
+        setProperty(result.property);
+        setComparables(result.property.comparables.map((c) => ({ ...c })));
+      } else if (result.status === "error") {
+        setRefreshError(describeProviderErrorCode(result.error.code));
+      } else {
+        setRefreshError("Multiple matching properties were found for this address — refresh isn't available for ambiguous matches yet.");
+      }
+    } catch {
+      setRefreshError("Something went wrong refreshing this property's data.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -144,7 +179,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
             <button
               type="button"
               onClick={handleDuplicate}
-              className="inline-flex items-center gap-1.5 h-9 rounded-full border border-border px-3.5 text-xs font-medium text-white/70 hover:text-white hover:border-border-strong transition-colors"
+              className="inline-flex items-center gap-1.5 h-9 rounded-full border border-border px-3.5 text-xs font-medium text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150"
             >
               <Copy className="h-3.5 w-3.5" />
               Duplicate
@@ -152,7 +187,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
-              className="inline-flex items-center gap-1.5 h-9 rounded-full border border-red-400/25 px-3.5 text-xs font-medium text-red-300 hover:bg-red-400/10 transition-colors"
+              className="inline-flex items-center gap-1.5 h-9 rounded-full border border-red-400/25 px-3.5 text-xs font-medium text-red-300 hover:bg-red-400/10 active:scale-[0.98] transition-all duration-150"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -167,17 +202,34 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="flex flex-col gap-6 min-w-0">
-          <PropertyHeader property={deal.property} status={status} />
-          <DemoDataBanner />
-          <PropertyOverview property={deal.property} />
+          <PropertyHeader property={property} status={status} />
+          <DataSourceBanner source={property.source} />
+
+          <div className="flex flex-wrap items-center justify-between gap-2 -mt-2">
+            <p className="text-xs text-muted">
+              Last retrieved {new Date(property.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            </p>
+            <button
+              type="button"
+              onClick={handleRefreshPropertyData}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 h-8 rounded-full border border-border px-3 text-xs font-medium text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
+            >
+              {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+              {isRefreshing ? "Refreshing..." : "Refresh Property Data"}
+            </button>
+          </div>
+          {refreshError ? <p className="text-xs text-red-400 -mt-3">{refreshError}</p> : null}
+
+          <PropertyOverview property={property} />
           <AssumptionsForm assumptions={assumptions} onChange={setAssumptions} />
           <ArvPanel
-            property={deal.property}
+            property={property}
             comparables={comparables}
             arvOverrideCents={assumptions.arvOverrideCents}
             onChangeOverride={(cents) => setAssumptions({ ...assumptions, arvOverrideCents: cents })}
           />
-          <RepairEstimator repairEstimate={repairEstimate} squareFootage={deal.property.squareFootage} onChange={setRepairEstimate} />
+          <RepairEstimator repairEstimate={repairEstimate} squareFootage={property.squareFootage} onChange={setRepairEstimate} />
           <ComparablesTable comparables={comparables} onChange={setComparables} />
 
           {calculationError ? (
@@ -231,7 +283,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
           {results ? (
             <CalculationExplainer
               inputs={{
-                listPriceCents: deal.property.listPriceCents ?? 0,
+                listPriceCents: property.listPriceCents ?? 0,
                 contractPriceCents: assumptions.contractPriceCents,
                 arvCents,
                 repairCostCents: repairCents,

@@ -21,8 +21,9 @@ export async function generateSampleDeals(): Promise<Deal[]> {
 
   for (const sample of SAMPLE_ADDRESSES) {
     const address = normalizeManualAddress(sample);
-    const property = await propertyDataProvider.getPropertyByAddress(address);
-    const deal = createDealFromProperty(property, DEFAULT_SETTINGS);
+    const result = await propertyDataProvider.getPropertyByAddress(address);
+    if (result.status !== "ok") continue;
+    const deal = createDealFromProperty(result.property, DEFAULT_SETTINGS);
     deal.status = sample.status;
     deal.isSample = true;
     deals.push(deal);

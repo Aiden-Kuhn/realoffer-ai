@@ -1,3 +1,4 @@
+import { normalizeLegacyDeal } from "@/lib/repositories/dealMigration";
 import type { Deal, DealPipelineStatus } from "@/types/deal";
 
 export type DealSortField = "date" | "arv" | "assignmentFee" | "profit";
@@ -48,7 +49,7 @@ export function getDealsSnapshot(): Deal[] {
   cachedRaw = raw;
   try {
     const parsed = raw ? JSON.parse(raw) : [];
-    cachedDeals = Array.isArray(parsed) ? (parsed as Deal[]) : [];
+    cachedDeals = Array.isArray(parsed) ? parsed.map(normalizeLegacyDeal) : [];
   } catch {
     cachedDeals = [];
   }

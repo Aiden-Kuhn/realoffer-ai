@@ -25,7 +25,10 @@ export function computeDealRisks(
   if (property.confidence === "low") {
     risks.push({
       severity: "medium",
-      message: "Simulated data confidence is low for this property — treat all figures as a rough starting point.",
+      message:
+        property.source === "rentcast"
+          ? "The provider returned limited data for this property — treat all figures as a rough starting point."
+          : "Simulated data confidence is low for this property — treat all figures as a rough starting point.",
     });
   }
 
