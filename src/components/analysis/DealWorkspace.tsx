@@ -23,6 +23,7 @@ import { ArvPanel } from "@/components/analysis/ArvPanel";
 import { RepairEstimator } from "@/components/analysis/RepairEstimator";
 import { ComparablesTable } from "@/components/analysis/ComparablesTable";
 import { RiskList } from "@/components/analysis/RiskList";
+import { InvestmentAnalyst } from "@/components/analysis/InvestmentAnalyst";
 import { CalculationExplainer } from "@/components/analysis/CalculationExplainer";
 import { SummaryPanel } from "@/components/analysis/SummaryPanel";
 import { Disclaimers } from "@/components/shared/Disclaimers";
@@ -33,6 +34,9 @@ import { DEAL_PIPELINE_STATUSES, DEAL_PIPELINE_STATUS_LABELS, type Deal, type De
 import type { RepairEstimateState } from "@/lib/calculations/repairs";
 import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
 import { DealInputValidationError, type DealFinancialResults } from "@/lib/calculations/types";
+import type { InvestmentAnalysisResult } from "@/lib/investmentAnalysis/types";
+import { buildInvestmentAnalysisContext } from "@/lib/investmentAnalysis/buildContext";
+import { computeDealScore } from "@/lib/investmentAnalysis/dealScore";
 
 export function DealWorkspace({ id }: { id: string }) {
   const mounted = useMounted();
@@ -80,6 +84,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const [comparables, setComparables] = useState<ComparableSale[]>(deal.comparables);
   const [notes, setNotes] = useState(deal.notes);
   const [status, setStatus] = useState<DealPipelineStatus>(deal.status);
+  const [investmentAnalysis, setInvestmentAnalysis] = useState<InvestmentAnalysisResult | undefined>(deal.investmentAnalysis);
 
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -116,6 +121,12 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const sufficientInfo = hasSufficientPropertyInfo(property);
   const risks = results ? computeDealRisks(property, comparables, results) : [];
 
+  const dealScore = useMemo(() => {
+    if (!results) return null;
+    const context = buildInvestmentAnalysisContext(property, comparables, repairEstimate, assumptions, results);
+    return computeDealScore(context);
+  }, [property, comparables, repairEstimate, assumptions, results]);
+
   function handleSave() {
     if (!results) return;
     setIsSaving(true);
@@ -129,6 +140,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
       assumptions,
       repairEstimate,
       results,
+      investmentAnalysis,
       dataMode: property.source === "rentcast" ? "real" : "demo",
     };
     try {
@@ -268,6 +280,19 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
             <RiskList risks={risks} />
           )}
 
+          {results ? (
+            <InvestmentAnalyst
+              dealId={deal.id}
+              property={property}
+              comparables={comparables}
+              repairEstimate={repairEstimate}
+              assumptions={assumptions}
+              results={results}
+              savedAnalysis={investmentAnalysis}
+              onAnalysisChange={setInvestmentAnalysis}
+            />
+          ) : null}
+
           <section className="rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-sm font-semibold text-white mb-3">Status and notes</h2>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -334,6 +359,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
             results={results}
             assumptions={assumptions}
             hasSufficientPropertyInfo={sufficientInfo}
+            dealScore={dealScore}
             onSave={handleSave}
             isSaving={isSaving}
             justSaved={justSaved}

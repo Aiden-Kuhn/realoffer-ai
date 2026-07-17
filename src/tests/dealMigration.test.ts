@@ -167,4 +167,73 @@ describe("normalizeLegacyDeal", () => {
     expect(Date.parse(migrated.createdAt)).not.toBeNaN();
     expect(Date.parse(migrated.updatedAt)).not.toBeNaN();
   });
+
+  it("opens a deal saved before the Investment Analyst milestone with investmentAnalysis left undefined", () => {
+    // legacyDealJson predates the investmentAnalysis field entirely — it's
+    // never present in the raw JSON, exactly like a real old saved deal.
+    const migrated = normalizeLegacyDeal(legacyDealJson);
+    expect(migrated.investmentAnalysis).toBeUndefined();
+  });
+
+  it("does not throw and does not fabricate an analysis for a deal that never had one generated", () => {
+    expect(() => normalizeLegacyDeal(legacyDealJson)).not.toThrow();
+    const migrated = normalizeLegacyDeal(legacyDealJson);
+    expect(migrated.investmentAnalysis).toBeUndefined();
+  });
+
+  function makeValidInvestmentAnalysis(overrides: Record<string, unknown> = {}) {
+    return {
+      dealScore: { score: 80, label: "worth_investigating", labelText: "Worth Investigating", breakdown: [] },
+      recommendation: { recommendation: "pursue_at_current_assumptions", recommendationLabel: "test", reasons: [], keyAssumptions: [], whatWouldChangeThis: [], requiresVerification: [] },
+      offerGuidance: { suggestedOpeningOfferCents: 0, maximumRecommendedOfferCents: 0, existingMaoCents: 0, differenceFromListPriceCents: null, differenceFromProposedContractCents: 0, discountBelowMaxUsed: 0.06 },
+      sensitivity: { scenarios: [] },
+      narrative: {
+        executiveSummary: "test",
+        strengths: [],
+        risks: [],
+        missingInformation: [],
+        priceAnalysis: "test",
+        repairAnalysis: "test",
+        arvAnalysis: "test",
+        comparableAnalysis: "test",
+        negotiationPoints: [],
+        nextSteps: [],
+        confidence: "medium",
+        confidenceReasons: [],
+        warnings: [],
+      },
+      source: "rule_based",
+      provider: null,
+      model: null,
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      analysisVersion: 1,
+      inputHash: "test-hash",
+      ...overrides,
+    };
+  }
+
+  it("does not throw and discards a hand-corrupted `investmentAnalysis: null` back to undefined", () => {
+    const corrupted = { ...legacyDealJson, investmentAnalysis: null };
+    expect(() => normalizeLegacyDeal(corrupted)).not.toThrow();
+    expect(normalizeLegacyDeal(corrupted).investmentAnalysis).toBeUndefined();
+  });
+
+  it("discards an investmentAnalysis whose narrative array field was corrupted to null", () => {
+    const corrupted = { ...legacyDealJson, investmentAnalysis: makeValidInvestmentAnalysis({ narrative: { ...makeValidInvestmentAnalysis().narrative, strengths: null } }) };
+    const migrated = normalizeLegacyDeal(corrupted);
+    expect(migrated.investmentAnalysis).toBeUndefined();
+  });
+
+  it("discards an investmentAnalysis missing inputHash entirely", () => {
+    const corrupted = { ...legacyDealJson, investmentAnalysis: makeValidInvestmentAnalysis({ inputHash: undefined }) };
+    const migrated = normalizeLegacyDeal(corrupted);
+    expect(migrated.investmentAnalysis).toBeUndefined();
+  });
+
+  it("preserves a well-formed investmentAnalysis unchanged", () => {
+    const valid = makeValidInvestmentAnalysis();
+    const deal = { ...legacyDealJson, investmentAnalysis: valid };
+    const migrated = normalizeLegacyDeal(deal);
+    expect(migrated.investmentAnalysis).toEqual(valid);
+  });
 });

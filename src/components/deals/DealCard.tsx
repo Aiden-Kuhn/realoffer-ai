@@ -2,17 +2,20 @@ import Link from "next/link";
 import { formatCents } from "@/lib/calculations/money";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SourceBadge } from "@/components/shared/SourceBadge";
+import { DealScoreBadge } from "@/components/shared/DealScoreBadge";
+import { deriveDealInsights } from "@/lib/investmentAnalysis/deriveDealInsights";
 import type { Deal } from "@/types/deal";
 
 export function DealCard({ deal, onDeleteRequest }: { deal: Deal; onDeleteRequest: (id: string) => void }) {
   const arv = deal.assumptions.arvOverrideCents ?? deal.property.arvExpectedCents;
   const isProfitNegative = deal.results.projectedInvestorProfitCents < 0;
+  const insights = deriveDealInsights(deal);
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4 transition-colors duration-200 hover:border-border-strong">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link href={`/dashboard/deals/${deal.id}`} className="font-medium text-white hover:text-accent-3 transition-colors">
               {deal.property.address.line1}
             </Link>
@@ -23,7 +26,10 @@ export function DealCard({ deal, onDeleteRequest }: { deal: Deal; onDeleteReques
             {new Date(deal.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <StatusBadge status={deal.status} />
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <StatusBadge status={deal.status} />
+          <DealScoreBadge score={insights.dealScore.score} label={insights.dealScore.label} labelText={insights.dealScore.labelText} compact />
+        </div>
       </div>
 
       <div className="mt-4 grid grid-cols-3 auto-rows-fr gap-2 text-sm">
@@ -46,6 +52,10 @@ export function DealCard({ deal, onDeleteRequest }: { deal: Deal; onDeleteReques
           </p>
         </div>
       </div>
+
+      {insights.hasAnalysis && insights.isStale ? (
+        <p className="mt-3 text-[11px] text-amber-300/80">Analysis is based on previous assumptions — reopen to regenerate.</p>
+      ) : null}
 
       <div className="mt-4 flex items-center justify-between">
         <Link href={`/dashboard/deals/${deal.id}`} className="text-xs font-medium text-accent-3 hover:text-accent-3/80 transition-colors">

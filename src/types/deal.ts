@@ -1,6 +1,7 @@
 import type { MaoMethod, DealFinancialResults } from "@/lib/calculations/types";
 import type { RepairEstimateState } from "@/lib/calculations/repairs";
 import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
+import type { InvestmentAnalysisResult } from "@/lib/investmentAnalysis/types";
 
 export const DEAL_PIPELINE_STATUSES = [
   "draft",
@@ -57,4 +58,8 @@ export type Deal = {
   results: DealFinancialResults;
   isSample?: boolean;
   dataMode: DealDataMode;
+  /** Absent for deals saved before the Investment Analyst milestone, or
+   * for any deal that hasn't had an analysis generated yet — both render
+   * as "Generate Analysis" rather than an error. See lib/investmentAnalysis. */
+  investmentAnalysis?: InvestmentAnalysisResult;
 };

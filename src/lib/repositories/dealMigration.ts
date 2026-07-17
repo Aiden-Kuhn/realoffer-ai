@@ -1,6 +1,7 @@
 import { computeDealFinancials } from "@/lib/calculations/engine";
 import { createDefaultRepairEstimateState } from "@/lib/calculations/repairs";
 import type { DealFinancialResults } from "@/lib/calculations/types";
+import type { InvestmentAnalysisResult } from "@/lib/investmentAnalysis/types";
 import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
 import type { Deal, DealAssumptions } from "@/types/deal";
 
@@ -70,7 +71,33 @@ export function normalizeLegacyDeal(raw: unknown): Deal {
     repairEstimate: deal.repairEstimate ?? createDefaultRepairEstimateState(),
     results: deal.results ?? fallbackResults(),
     dataMode: deal.dataMode ?? (property.source === "rentcast" ? "real" : "demo"),
+    investmentAnalysis: normalizeLegacyInvestmentAnalysis(deal.investmentAnalysis),
   };
+}
+
+/** `investmentAnalysis` is optional-at-rest and its absence is meaningful
+ * ("never generated") — but hand-edited or corrupted storage (e.g. a stray
+ * `null`, or a narrative array field replaced with `null`) must degrade to
+ * that same "absent" state rather than reaching the UI. The deal score,
+ * recommendation, offer guidance, and sensitivity scenarios shown on screen
+ * are always recomputed fresh from the deal's current inputs (see
+ * InvestmentAnalyst.tsx) — only `narrative` and its metadata are ever read
+ * off this stored object, and NarrativeView calls `.map()`/`.length` on
+ * every narrative array field below with no further guards. */
+function normalizeLegacyInvestmentAnalysis(raw: unknown): InvestmentAnalysisResult | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const candidate = raw as Partial<InvestmentAnalysisResult>;
+  if (typeof candidate.inputHash !== "string") return undefined;
+  if (typeof candidate.generatedAt !== "string") return undefined;
+  if (candidate.source !== "ai" && candidate.source !== "rule_based") return undefined;
+
+  const narrative = candidate.narrative;
+  if (typeof narrative !== "object" || narrative === null) return undefined;
+  const narrativeArrayFields = ["strengths", "risks", "missingInformation", "negotiationPoints", "nextSteps", "warnings", "confidenceReasons"] as const;
+  if (narrativeArrayFields.some((field) => !Array.isArray(narrative[field]))) return undefined;
+  if (typeof narrative.executiveSummary !== "string") return undefined;
+
+  return candidate as InvestmentAnalysisResult;
 }
 
 function normalizeLegacyPropertyRecord(raw: (Partial<PropertyRecord> & Record<string, unknown>) | undefined): PropertyRecord {

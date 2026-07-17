@@ -3,9 +3,11 @@
 import { ChevronDown, Check } from "lucide-react";
 import { formatCents } from "@/lib/calculations/money";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
+import { DealScoreBadge } from "@/components/shared/DealScoreBadge";
 import { explainClassification } from "@/lib/calculations/explainClassification";
 import type { DealFinancialResults } from "@/lib/calculations/types";
 import type { DealAssumptions } from "@/types/deal";
+import type { RealOfferDealScore } from "@/lib/investmentAnalysis/types";
 
 type SummaryPanelProps = {
   arvCents: number;
@@ -13,6 +15,7 @@ type SummaryPanelProps = {
   results: DealFinancialResults;
   assumptions: DealAssumptions;
   hasSufficientPropertyInfo: boolean;
+  dealScore: RealOfferDealScore | null;
   onSave: () => void;
   isSaving: boolean;
   justSaved: boolean;
@@ -33,6 +36,7 @@ export function SummaryPanel({
   results,
   assumptions,
   hasSufficientPropertyInfo,
+  dealScore,
   onSave,
   isSaving,
   justSaved,
@@ -61,6 +65,13 @@ export function SummaryPanel({
 
   return (
     <aside className="lg:sticky lg:top-6 rounded-2xl border border-border-strong bg-surface-2 p-6 flex flex-col gap-5 shadow-elevated">
+      {dealScore ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted">RealOffer Deal Score</span>
+          <DealScoreBadge score={dealScore.score} label={dealScore.label} labelText={dealScore.labelText} />
+        </div>
+      ) : null}
+
       <div>
         <p className="text-xs text-muted mb-2">Deal classification</p>
         <ClassificationBadge classification={results.dealClassification} />

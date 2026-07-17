@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Target, DollarSign, TrendingUp, FolderSearch, Sparkles } from "lucide-react";
+import { Plus, Target, DollarSign, TrendingUp, FolderSearch, Sparkles, Gauge, Handshake, History } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDeals } from "@/hooks/useDeals";
@@ -51,6 +51,14 @@ export function OverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-[124px] rounded-2xl border border-border bg-surface p-5">
+              <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
+              <div className="mt-6 h-7 w-20 rounded bg-white/5 animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={`ai-${i}`} className="h-[124px] rounded-2xl border border-border bg-surface p-5">
               <div className="h-4 w-24 rounded bg-white/5 animate-pulse" />
               <div className="mt-6 h-7 w-20 rounded bg-white/5 animate-pulse" />
             </div>
@@ -120,6 +128,13 @@ export function OverviewPage() {
               label="Avg. projected investor profit"
               value={formatCents(stats.averageProjectedProfitCents)}
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={Gauge} label="Avg. RealOffer Deal Score" value={`${stats.averageDealScore}/100`} hint="Deterministic — never AI-influenced" />
+            <StatCard icon={Sparkles} label="Strong candidates" value={String(stats.strongCandidateDeals)} hint="Score 85+" />
+            <StatCard icon={Handshake} label="Negotiation required" value={String(stats.negotiationRequiredDeals)} />
+            <StatCard icon={History} label="Stale analyses" value={String(stats.staleAnalysisDeals)} hint="Assumptions changed since last generated" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
