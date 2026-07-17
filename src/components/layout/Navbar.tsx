@@ -88,7 +88,19 @@ export function Navbar() {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(e) => {
+                    // The menu is still animating closed (and <body> still
+                    // has overflow:hidden) at click time — jumping to the
+                    // anchor immediately silently no-ops. Let the collapse
+                    // finish and overflow unlock first, then scroll.
+                    e.preventDefault();
+                    setMenuOpen(false);
+                    document.body.style.overflow = "";
+                    window.setTimeout(() => {
+                      document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth" });
+                      history.replaceState(null, "", link.href);
+                    }, 260);
+                  }}
                   className="px-3 py-3 text-[15px] text-white/80 hover:text-white rounded-lg hover:bg-white/5"
                 >
                   {link.label}

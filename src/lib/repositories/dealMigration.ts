@@ -1,5 +1,47 @@
+import { computeDealFinancials } from "@/lib/calculations/engine";
+import { createDefaultRepairEstimateState } from "@/lib/calculations/repairs";
+import type { DealFinancialResults } from "@/lib/calculations/types";
 import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
-import type { Deal } from "@/types/deal";
+import type { Deal, DealAssumptions } from "@/types/deal";
+
+/** Safe, zeroed fallback used only when a stored record predates the
+ * assumptions/results fields entirely — never thrown, never guessed as a
+ * real value; every field renders as $0 / a neutral classification rather
+ * than crashing the deals list or detail view. */
+function fallbackAssumptions(): DealAssumptions {
+  return {
+    contractPriceCents: 0,
+    arvOverrideCents: null,
+    desiredAssignmentFeeCents: 0,
+    buyerClosingCostsCents: 0,
+    holdingCostsCents: 0,
+    financingCostsCents: 0,
+    sellingCostsCents: 0,
+    investorTargetProfitCents: 0,
+    investorArvPercentage: 0,
+    maoMethod: "PERCENTAGE_OF_ARV",
+  };
+}
+
+function fallbackResults(): DealFinancialResults {
+  return computeDealFinancials(
+    {
+      listPriceCents: 0,
+      contractPriceCents: 0,
+      arvCents: 0,
+      repairCostCents: 0,
+      desiredAssignmentFeeCents: 0,
+      buyerClosingCostsCents: 0,
+      holdingCostsCents: 0,
+      financingCostsCents: 0,
+      sellingCostsCents: 0,
+      investorTargetProfitCents: 0,
+      investorArvPercentage: 0,
+      maoMethod: "PERCENTAGE_OF_ARV",
+    },
+    { hasSufficientPropertyInfo: false },
+  );
+}
 
 /**
  * Coerces a possibly-older-shape deal object (parsed from localStorage JSON)
@@ -17,8 +59,16 @@ export function normalizeLegacyDeal(raw: unknown): Deal {
 
   return {
     ...(deal as Deal),
+    id: deal.id ?? crypto.randomUUID(),
+    createdAt: deal.createdAt ?? new Date(0).toISOString(),
+    updatedAt: deal.updatedAt ?? deal.createdAt ?? new Date(0).toISOString(),
+    status: deal.status ?? "draft",
+    notes: deal.notes ?? "",
     property,
     comparables,
+    assumptions: deal.assumptions ?? fallbackAssumptions(),
+    repairEstimate: deal.repairEstimate ?? createDefaultRepairEstimateState(),
+    results: deal.results ?? fallbackResults(),
     dataMode: deal.dataMode ?? (property.source === "rentcast" ? "real" : "demo"),
   };
 }

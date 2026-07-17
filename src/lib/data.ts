@@ -4,7 +4,7 @@ import {
   Calculator,
   FileSignature,
   Repeat,
-  Building2,
+  LayoutDashboard,
   Link2,
   ScanSearch,
   FileBarChart,
@@ -25,11 +25,13 @@ export type Stat = {
   label: string;
 };
 
+// Product facts, not usage/traction metrics — RealOffer AI is in private
+// beta and doesn't have real customer data to report yet.
 export const stats: Stat[] = [
-  { value: "$1.4B+", label: "In deals analyzed" },
-  { value: "38,000+", label: "Properties evaluated" },
-  { value: "9 sec", label: "Average analysis time" },
-  { value: "50 states", label: "Market coverage" },
+  { value: "6", label: "Deal-analysis tools in one workspace" },
+  { value: "2", label: "MAO calculation methods to choose from" },
+  { value: "100%", label: "Of assumptions stay yours to edit" },
+  { value: "Beta", label: "Now in private beta" },
 ];
 
 export const audiences = [
@@ -52,37 +54,37 @@ export const features: Feature[] = [
     icon: Brain,
     title: "AI Deal Analysis",
     description:
-      "Drop in an address or listing link and get a full investment breakdown in seconds — comps, risk factors, and a clear buy or pass recommendation.",
+      "Drop in an address or listing link and get a full investment breakdown in seconds — comparable sales, risk flags, and a clear deal classification to guide your next move.",
   },
   {
     icon: Hammer,
     title: "Repair Cost Estimator",
     description:
-      "Computer-vision powered condition scoring translates photos and listing details into line-item repair estimates by trade, down to the dollar.",
+      "Choose a condition preset or build a line-item budget by trade — per-square-foot, category-by-category, or a manual total — and see it flow straight into your deal math.",
   },
   {
     icon: Calculator,
     title: "ARV Calculator",
     description:
-      "Pulls live, verified comparable sales within your radius and adjusts for square footage, condition, and finishes to project after-repair value.",
+      "Pulls comparable sales for the property and lets you include or exclude each one to shape a suggested after-repair value — never a black box, always adjustable.",
   },
   {
     icon: FileSignature,
     title: "Cash Offer Generator",
     description:
-      "Generate a defensible maximum allowable offer instantly, backed by your target margin, holding costs, and real-time repair data.",
+      "Generate a maximum allowable offer instantly from your target margin, holding costs, and repair estimate — recalculated the moment you change an assumption.",
   },
   {
     icon: Repeat,
     title: "Wholesale Assignment Analysis",
     description:
-      "Model assignment fees against end-buyer profit margins automatically, so every contract you send out is one investors will actually take.",
+      "Model your assignment fee against the end buyer's purchase price and remaining cushion, using the same repair and ARV data as the rest of the analysis.",
   },
   {
-    icon: Building2,
-    title: "Rental Investment Calculator",
+    icon: LayoutDashboard,
+    title: "Saved Deal Pipeline",
     description:
-      "Instant cap rate, cash-on-cash return, and DSCR projections using live rent comps, taxes, insurance, and financing terms you control.",
+      "Save every analysis, track status from draft to closed, and search, filter, or sort your pipeline by ARV, assignment fee, or projected profit.",
   },
 ];
 
@@ -97,25 +99,25 @@ export const steps: Step[] = [
     icon: Link2,
     title: "Paste an address or listing link",
     description:
-      "Drop in any property address or a link from Zillow, Redfin, or the MLS. No manual data entry, no spreadsheets.",
+      "Drop in a Zillow listing link, or enter the property manually if you don't have one. No spreadsheets required.",
   },
   {
     icon: ScanSearch,
     title: "AI analyzes the deal",
     description:
-      "Our models pull comps, tax records, permit history, and listing photos to assess condition, market position, and risk in real time.",
+      "RealOffer looks up the property record, active listing, valuation, and comparable sales, then flags risks like thin margins or missing data.",
   },
   {
     icon: FileBarChart,
     title: "Get instant projections",
     description:
-      "Review ARV, repair costs, profit margins, and a suggested offer — all laid out in a clean, shareable report.",
+      "Review ARV, repair costs, profit margins, and a suggested maximum offer — all laid out in one workspace you can adjust in real time.",
   },
   {
     icon: Zap,
     title: "Make your offer with confidence",
     description:
-      "Export the analysis, generate a cash offer, or send it straight to your buyers list — all backed by data, not gut feel.",
+      "Save the analysis to your pipeline and use the maximum allowable offer as your ceiling when you negotiate — backed by data, not gut feel.",
   },
 ];
 
@@ -160,7 +162,7 @@ export const plans: Plan[] = [
       { label: "ARV & repair cost estimates", included: true },
       { label: "Cash offer generator", included: true },
       { label: "Wholesale assignment analysis", included: true },
-      { label: "Rental investment calculator", included: true },
+      { label: "Saved deal pipeline", included: true },
       { label: "Priority support", included: true },
       { label: "5 team seats", included: true },
     ],
@@ -189,22 +191,22 @@ export const faqs: FaqItem[] = [
   {
     question: "How accurate is the AI deal analysis?",
     answer:
-      "RealOffer AI cross-references live MLS data, county tax records, and recent comparable sales to generate its projections. Most users see ARV estimates within 3-5% of a licensed appraiser's valuation, and we continuously retrain our models on closed deal outcomes to improve accuracy over time.",
+      "RealOffer AI pulls property records, active listings, and comparable sales through RentCast, then calculates a suggested after-repair value from the comps you choose to include. Every figure is an estimate for planning purposes — not an appraisal, inspection, or guarantee of profit — and you can override the ARV or exclude any comp that doesn't fit.",
   },
   {
     question: "Do I need to enter property details manually?",
     answer:
-      "No. Paste a property address or a listing link from Zillow, Redfin, or your MLS, and RealOffer AI automatically pulls square footage, bed/bath count, lot size, listing photos, and tax history to build your analysis.",
+      "Not if you don't want to. Paste a Zillow listing link and RealOffer AI pulls square footage, bed/bath count, lot size, and tax history automatically. You can also enter every field manually — useful for off-market or pocket-listing deals a link can't cover.",
   },
   {
     question: "Can I use RealOffer AI for wholesaling?",
     answer:
-      "Yes. The Wholesale Assignment Analysis tool models your assignment fee against your end buyer's target margin using the same repair and ARV data, so you can confirm a contract is fundable before you ever send it to your buyers list.",
+      "Yes. Every analysis calculates your assignment fee against the end buyer's purchase price and remaining cushion below the maximum allowable offer, using the same repair and ARV data — so you can gut-check whether a contract is fundable before you sign it.",
   },
   {
     question: "What markets does RealOffer AI cover?",
     answer:
-      "We currently support comparable sales and tax data across all 50 states. Coverage depth varies slightly by county depending on public record availability, but every core valuation feature works nationwide.",
+      "Property and comparable-sales data is powered by RentCast, which covers property records across the U.S., though depth of coverage can vary by county depending on public record availability. If a property can't be found automatically, you can enter it manually and continue the analysis.",
   },
   {
     question: "Is there a contract or can I cancel anytime?",
@@ -214,7 +216,7 @@ export const faqs: FaqItem[] = [
   {
     question: "Does RealOffer AI integrate with my existing tools?",
     answer:
-      "Pro and Enterprise plans include CSV export and API access, so you can push analyses directly into your CRM, deal tracker, or underwriting spreadsheet. Native integrations with popular investor CRMs are on our near-term roadmap.",
+      "Pro and Enterprise plans are planned to include CSV export and API access, so you can push analyses directly into your CRM, deal tracker, or underwriting spreadsheet. Native integrations with popular investor CRMs are on our near-term roadmap.",
   },
 ];
 

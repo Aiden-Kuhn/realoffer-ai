@@ -8,6 +8,15 @@ function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
+/** Thrown when a write to localStorage fails (quota exceeded, private
+ * browsing with storage disabled, etc.). */
+export class SettingsStorageError extends Error {
+  constructor(message = "Couldn't save settings — your browser's local storage might be full or unavailable (e.g. private browsing).") {
+    super(message);
+    this.name = "SettingsStorageError";
+  }
+}
+
 export interface SettingsRepository {
   get(): AppSettings;
   save(settings: AppSettings): AppSettings;
@@ -28,14 +37,22 @@ export class LocalStorageSettingsRepository implements SettingsRepository {
 
   save(settings: AppSettings): AppSettings {
     if (isBrowser()) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch {
+        throw new SettingsStorageError();
+      }
     }
     return settings;
   }
 
   reset(): AppSettings {
     if (isBrowser()) {
-      window.localStorage.removeItem(STORAGE_KEY);
+      try {
+        window.localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        throw new SettingsStorageError();
+      }
     }
     return DEFAULT_SETTINGS;
   }

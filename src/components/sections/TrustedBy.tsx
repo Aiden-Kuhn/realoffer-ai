@@ -9,7 +9,7 @@ export function TrustedBy() {
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <Reveal>
           <p className="text-center text-xs sm:text-sm uppercase tracking-[0.2em] text-muted">
-            Trusted by investors across the country
+            Built for real estate investors and wholesalers
           </p>
         </Reveal>
 

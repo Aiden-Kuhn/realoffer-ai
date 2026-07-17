@@ -86,6 +86,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { results, calculationError } = useMemo<{
     results: DealFinancialResults | null;
@@ -118,6 +119,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   function handleSave() {
     if (!results) return;
     setIsSaving(true);
+    setActionError(null);
     const toSave: Deal = {
       ...deal,
       status,
@@ -129,22 +131,37 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
       results,
       dataMode: property.source === "rentcast" ? "real" : "demo",
     };
-    dealRepository.save(toSave);
-    clearDraftDeal(deal.id);
-    setIsSaving(false);
-    setJustSaved(true);
-    window.setTimeout(() => setJustSaved(false), 2000);
+    try {
+      dealRepository.save(toSave);
+      clearDraftDeal(deal.id);
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 2000);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Couldn't save this deal. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleDuplicate() {
-    const copy = dealRepository.duplicate(deal.id);
-    if (copy) router.push(`/dashboard/deals/${copy.id}`);
+    setActionError(null);
+    try {
+      const copy = dealRepository.duplicate(deal.id);
+      if (copy) router.push(`/dashboard/deals/${copy.id}`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Couldn't duplicate this deal. Please try again.");
+    }
   }
 
   function handleDelete() {
-    dealRepository.delete(deal.id);
-    if (!isSaved) clearDraftDeal(deal.id);
-    router.push("/dashboard/deals");
+    setActionError(null);
+    try {
+      dealRepository.delete(deal.id);
+      if (!isSaved) clearDraftDeal(deal.id);
+      router.push("/dashboard/deals");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Couldn't delete this deal. Please try again.");
+    }
   }
 
   async function handleRefreshPropertyData() {
@@ -199,6 +216,13 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
           </span>
         )}
       </div>
+
+      {actionError ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3.5 text-sm text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          {actionError}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="flex flex-col gap-6 min-w-0">

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeManualAddress, normalizeSlugAddress, parseFormattedAddressForPrefill } from "@/lib/property/normalizeAddress";
+import {
+  isAddressLikelyComplete,
+  normalizeManualAddress,
+  normalizeSlugAddress,
+  parseFormattedAddressForPrefill,
+} from "@/lib/property/normalizeAddress";
 
 describe("normalizeManualAddress", () => {
   it("title-cases the street and city, uppercases the state, and builds a stable formatted key", () => {
@@ -30,6 +35,24 @@ describe("normalizeSlugAddress", () => {
   it("falls back gracefully when the slug has no recognizable state/zip", () => {
     const address = normalizeSlugAddress("some-weird-slug-with-no-location");
     expect(address.formatted.length).toBeGreaterThan(0);
+  });
+});
+
+describe("isAddressLikelyComplete", () => {
+  it("is true when a slug parses out a full city/state/zip", () => {
+    const address = normalizeSlugAddress("123-Main-St-Austin-TX-78701");
+    expect(isAddressLikelyComplete(address)).toBe(true);
+  });
+
+  it("is false when a slug has no recognizable state or zip", () => {
+    const address = normalizeSlugAddress("some-weird-slug-with-no-location");
+    expect(isAddressLikelyComplete(address)).toBe(false);
+  });
+
+  it("is false when city, state, or zip is individually missing", () => {
+    expect(isAddressLikelyComplete({ city: "", state: "TX", zip: "78701" })).toBe(false);
+    expect(isAddressLikelyComplete({ city: "Austin", state: "", zip: "78701" })).toBe(false);
+    expect(isAddressLikelyComplete({ city: "Austin", state: "TX", zip: "" })).toBe(false);
   });
 });
 

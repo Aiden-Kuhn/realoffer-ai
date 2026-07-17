@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Loader2, MapPinned, RotateCcw, Sparkles } from "lucide-react";
+import { AlertCircle, AlertTriangle, Loader2, MapPinned, RotateCcw, Sparkles } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { Tabs } from "@/components/shared/Tabs";
 import { ListingLinkForm } from "@/components/forms/ListingLinkForm";
@@ -14,7 +14,7 @@ import { createDealFromProperty } from "@/lib/calculations/createDeal";
 import { settingsRepository } from "@/lib/repositories/settingsRepository";
 import { saveDraftDeal } from "@/lib/repositories/draftDealStore";
 import { describeProviderErrorCode } from "@/lib/property/errorMessages";
-import { parseFormattedAddressForPrefill, type ManualAddressInput } from "@/lib/property/normalizeAddress";
+import { isAddressLikelyComplete, parseFormattedAddressForPrefill, type ManualAddressInput } from "@/lib/property/normalizeAddress";
 import type { AddressMatchCandidate, NormalizedAddress, ProviderErrorCode, PropertyRecord } from "@/lib/property/types";
 
 const TAB_ITEMS = [
@@ -53,7 +53,7 @@ function applyOverrides(property: PropertyRecord, overrides: ManualPropertyOverr
   };
 }
 
-type Phase = "idle" | "loading" | "ambiguous" | "error";
+type Phase = "idle" | "loading" | "ambiguous" | "error" | "storage-error";
 
 export function AnalyzePage() {
   useSetPageHeader("Analyze Deal");
@@ -63,8 +63,10 @@ export function AnalyzePage() {
   const [stepLabel, setStepLabel] = useState("");
   const [candidates, setCandidates] = useState<AddressMatchCandidate[]>([]);
   const [errorCode, setErrorCode] = useState<ProviderErrorCode | null>(null);
+  const [storageErrorMessage, setStorageErrorMessage] = useState<string | null>(null);
   const mode = usePropertyDataMode();
   const [manualPrefill, setManualPrefill] = useState<ManualAddressInput | null>(null);
+  const [incompleteAddressNotice, setIncompleteAddressNotice] = useState(false);
 
   const pendingRef = useRef<{ address: NormalizedAddress; overrides?: ManualPropertyOverrides } | null>(null);
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,19 +94,30 @@ export function AnalyzePage() {
     }
   }
 
-  function finalizeAndNavigate(property: PropertyRecord, overrides?: ManualPropertyOverrides) {
-    const finalProperty = overrides ? applyOverrides(property, overrides) : property;
-    const settings = settingsRepository.get();
-    const deal = createDealFromProperty(finalProperty, settings);
-    deal.status = "analyzing";
-    saveDraftDeal(deal);
-    router.push(`/dashboard/deals/${deal.id}`);
+  /** Returns true on success. A storage failure here is a local-browser
+   * problem, not a provider problem — it gets its own message and must not
+   * be treated as retryable via a fresh provider lookup. */
+  function finalizeAndNavigate(property: PropertyRecord, overrides?: ManualPropertyOverrides): boolean {
+    try {
+      const finalProperty = overrides ? applyOverrides(property, overrides) : property;
+      const settings = settingsRepository.get();
+      const deal = createDealFromProperty(finalProperty, settings);
+      deal.status = "analyzing";
+      saveDraftDeal(deal);
+      router.push(`/dashboard/deals/${deal.id}`);
+      return true;
+    } catch (error) {
+      setStorageErrorMessage(error instanceof Error ? error.message : "Couldn't start this analysis. Please try again.");
+      setPhase("storage-error");
+      return false;
+    }
   }
 
   async function runAnalysis(address: NormalizedAddress, overrides?: ManualPropertyOverrides, forceRefresh = false) {
     pendingRef.current = { address, overrides };
     setPhase("loading");
     setErrorCode(null);
+    setStorageErrorMessage(null);
     startSteps(tab === "link" ? LINK_STEPS : MANUAL_STEPS);
 
     try {
@@ -137,11 +150,17 @@ export function AnalyzePage() {
   async function continueWithDemo() {
     if (!pendingRef.current) return;
     setPhase("loading");
+    setStorageErrorMessage(null);
     setStepLabel("Generating demo property data");
-    const result = await propertyDataProvider.getPropertyByAddress(pendingRef.current.address);
-    if (result.status === "ok") {
-      finalizeAndNavigate(result.property, pendingRef.current.overrides);
-    } else {
+    try {
+      const result = await propertyDataProvider.getPropertyByAddress(pendingRef.current.address);
+      if (result.status === "ok") {
+        finalizeAndNavigate(result.property, pendingRef.current.overrides);
+      } else {
+        setErrorCode("unknown");
+        setPhase("error");
+      }
+    } catch {
       setErrorCode("unknown");
       setPhase("error");
     }
@@ -149,13 +168,31 @@ export function AnalyzePage() {
 
   function enterManually() {
     setPhase("idle");
+    setIncompleteAddressNotice(false);
     setTab("manual");
   }
 
   function chooseCandidate(candidate: AddressMatchCandidate) {
     setManualPrefill(parseFormattedAddressForPrefill(candidate.formattedAddress));
     setPhase("idle");
+    setIncompleteAddressNotice(false);
     setTab("manual");
+  }
+
+  function handleTabChange(next: string) {
+    setIncompleteAddressNotice(false);
+    setTab(next);
+  }
+
+  function handleLinkAddress(address: NormalizedAddress) {
+    if (!isAddressLikelyComplete(address)) {
+      setManualPrefill({ line1: address.line1, city: address.city, state: address.state, zip: address.zip });
+      setIncompleteAddressNotice(true);
+      setTab("manual");
+      return;
+    }
+    setIncompleteAddressNotice(false);
+    runAnalysis(address);
   }
 
   const isSubmitting = phase === "loading";
@@ -171,7 +208,24 @@ export function AnalyzePage() {
         </p>
       </div>
 
-      <Tabs items={TAB_ITEMS} value={tab} onChange={setTab} className="mb-6" />
+      <Tabs items={TAB_ITEMS} value={tab} onChange={handleTabChange} className="mb-6" />
+
+      {incompleteAddressNotice && tab === "manual" ? (
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3.5 text-sm text-amber-100">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-300" />
+          <span>
+            We couldn&apos;t confidently read a full address (street, city, state, and ZIP) from that link. Confirm
+            or complete the details below before analyzing.
+          </span>
+        </div>
+      ) : null}
+
+      {phase === "storage-error" && storageErrorMessage ? (
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-4 text-sm text-red-200">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          {storageErrorMessage}
+        </div>
+      ) : null}
 
       {phase === "loading" ? (
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent-3/25 bg-accent-3/[0.06] px-4 py-3.5 text-sm text-white/80">
@@ -241,7 +295,7 @@ export function AnalyzePage() {
 
       <div className="rounded-2xl border border-border bg-surface p-6">
         {tab === "link" ? (
-          <ListingLinkForm onSubmitAddress={(address) => runAnalysis(address)} isSubmitting={isSubmitting} mode={mode} />
+          <ListingLinkForm onSubmitAddress={handleLinkAddress} isSubmitting={isSubmitting} mode={mode} />
         ) : (
           <ManualPropertyForm
             onSubmitAddress={(address, overrides) => runAnalysis(address, overrides)}

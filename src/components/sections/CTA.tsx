@@ -19,8 +19,8 @@ export function CTA() {
                 Start underwriting deals like the pros
               </h2>
               <p className="mt-5 max-w-lg text-lg text-muted leading-relaxed text-balance">
-                Join thousands of investors using RealOffer AI to move faster on the
-                deals that matter — with the data to back every offer.
+                Try RealOffer AI free and move faster on the deals that matter —
+                with the data to back every offer.
               </p>
               <div className="mt-9 flex flex-col sm:flex-row items-center gap-3">
                 <Button href="/signup" variant="primary" size="lg">

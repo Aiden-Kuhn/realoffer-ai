@@ -18,6 +18,13 @@ export function isKnownStateAbbreviation(state: string): boolean {
   return US_STATE_ABBREVIATIONS.has(state.trim().toUpperCase());
 }
 
+/** Whether an address has enough parts (city, state, zip) to be looked up
+ * with any confidence — used to catch slugs that parsed too poorly to send
+ * straight to a provider lookup or demo generator without user review. */
+export function isAddressLikelyComplete(address: Pick<NormalizedAddress, "city" | "state" | "zip">): boolean {
+  return Boolean(address.city && address.state && address.zip);
+}
+
 function titleCase(value: string): string {
   return value
     .trim()

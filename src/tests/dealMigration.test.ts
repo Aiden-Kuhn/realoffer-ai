@@ -129,4 +129,42 @@ describe("normalizeLegacyDeal", () => {
     const migrated = normalizeLegacyDeal({ ...legacyDealJson, dataMode: "real" });
     expect(migrated.dataMode).toBe("real");
   });
+
+  it("does not throw on a record missing assumptions, results, and repairEstimate entirely", () => {
+    const partial = { ...legacyDealJson, assumptions: undefined, results: undefined, repairEstimate: undefined };
+    expect(() => normalizeLegacyDeal(partial)).not.toThrow();
+  });
+
+  it("backfills a usable results object (not undefined) when results is missing", () => {
+    const partial = { ...legacyDealJson, results: undefined };
+    const migrated = normalizeLegacyDeal(partial);
+    expect(migrated.results).toBeDefined();
+    expect(Number.isFinite(migrated.results.maximumAllowableOfferCents)).toBe(true);
+    expect(migrated.results.dealClassification).toBe("insufficient_information");
+  });
+
+  it("backfills usable assumptions and repairEstimate when both are missing", () => {
+    const partial = { ...legacyDealJson, assumptions: undefined, repairEstimate: undefined };
+    const migrated = normalizeLegacyDeal(partial);
+    expect(migrated.assumptions.maoMethod).toBe("PERCENTAGE_OF_ARV");
+    expect(migrated.repairEstimate.mode).toBeDefined();
+  });
+
+  it("backfills id, createdAt, status, and notes when entirely absent", () => {
+    const partial = {
+      ...legacyDealJson,
+      id: undefined,
+      createdAt: undefined,
+      updatedAt: undefined,
+      status: undefined,
+      notes: undefined,
+    };
+    const migrated = normalizeLegacyDeal(partial);
+    expect(typeof migrated.id).toBe("string");
+    expect(migrated.id.length).toBeGreaterThan(0);
+    expect(migrated.status).toBe("draft");
+    expect(migrated.notes).toBe("");
+    expect(Date.parse(migrated.createdAt)).not.toBeNaN();
+    expect(Date.parse(migrated.updatedAt)).not.toBeNaN();
+  });
 });

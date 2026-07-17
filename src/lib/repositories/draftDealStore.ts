@@ -17,9 +17,22 @@ function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
+/** Thrown when a write to sessionStorage fails (quota exceeded, private
+ * browsing with storage disabled, etc.). */
+export class DraftStorageError extends Error {
+  constructor(message = "Couldn't start this analysis — your browser's local storage might be full or unavailable (e.g. private browsing).") {
+    super(message);
+    this.name = "DraftStorageError";
+  }
+}
+
 export function saveDraftDeal(deal: Deal): void {
   if (!isBrowser()) return;
-  window.sessionStorage.setItem(`${KEY_PREFIX}${deal.id}`, JSON.stringify(deal));
+  try {
+    window.sessionStorage.setItem(`${KEY_PREFIX}${deal.id}`, JSON.stringify(deal));
+  } catch {
+    throw new DraftStorageError();
+  }
   cache.set(deal.id, deal);
 }
 

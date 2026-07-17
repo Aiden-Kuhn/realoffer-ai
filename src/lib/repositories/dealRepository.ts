@@ -4,6 +4,16 @@ import type { Deal, DealPipelineStatus } from "@/types/deal";
 export type DealSortField = "date" | "arv" | "assignmentFee" | "profit";
 export type SortDirection = "asc" | "desc";
 
+/** Thrown when a write to localStorage fails (quota exceeded, private
+ * browsing with storage disabled, etc.) — callers should catch this and
+ * show the user a clear message rather than letting it crash the UI. */
+export class DealStorageError extends Error {
+  constructor(message = "Couldn't save changes — your browser's local storage might be full or unavailable (e.g. private browsing).") {
+    super(message);
+    this.name = "DealStorageError";
+  }
+}
+
 export interface DealRepository {
   list(): Deal[];
   get(id: string): Deal | null;
@@ -66,7 +76,11 @@ function readAll(): Deal[] {
 
 function writeAll(deals: Deal[]): void {
   if (!isBrowser()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
+  } catch {
+    throw new DealStorageError();
+  }
   emitChange();
 }
 

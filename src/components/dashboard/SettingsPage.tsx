@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, AlertTriangle } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { usePropertyDataMode } from "@/hooks/usePropertyDataMode";
 import { useMounted } from "@/hooks/useMounted";
 import { settingsRepository } from "@/lib/repositories/settingsRepository";
 import { settingsSchema, type SettingsFormInput, type SettingsFormValues } from "@/lib/validation/schemas";
@@ -23,7 +24,9 @@ export function SettingsPage() {
 
 function SettingsForm() {
   const { user, signOut } = useAuth();
+  const propertyDataMode = usePropertyDataMode();
   const [justSaved, setJustSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const settings = settingsRepository.get();
 
@@ -46,20 +49,25 @@ function SettingsForm() {
   });
 
   function onSubmit(values: SettingsFormValues) {
-    const current = settingsRepository.get();
-    settingsRepository.save({
-      ...current,
-      fullName: values.fullName ?? "",
-      companyName: values.companyName ?? "",
-      defaultAssignmentFeeCents: dollarsToCents(values.defaultAssignmentFee),
-      defaultInvestorArvPercentage: values.defaultInvestorArvPercentage / 100,
-      defaultHoldingPeriodMonths: values.defaultHoldingPeriodMonths,
-      defaultBuyerClosingCostPercentage: values.defaultBuyerClosingCostPercentage / 100,
-      defaultSellingCostPercentage: values.defaultSellingCostPercentage / 100,
-      defaultFinancingCostPercentage: values.defaultFinancingCostPercentage / 100,
-    });
-    setJustSaved(true);
-    window.setTimeout(() => setJustSaved(false), 2000);
+    setSaveError(null);
+    try {
+      const current = settingsRepository.get();
+      settingsRepository.save({
+        ...current,
+        fullName: values.fullName ?? "",
+        companyName: values.companyName ?? "",
+        defaultAssignmentFeeCents: dollarsToCents(values.defaultAssignmentFee),
+        defaultInvestorArvPercentage: values.defaultInvestorArvPercentage / 100,
+        defaultHoldingPeriodMonths: values.defaultHoldingPeriodMonths,
+        defaultBuyerClosingCostPercentage: values.defaultBuyerClosingCostPercentage / 100,
+        defaultSellingCostPercentage: values.defaultSellingCostPercentage / 100,
+        defaultFinancingCostPercentage: values.defaultFinancingCostPercentage / 100,
+      });
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 2000);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Couldn't save settings. Please try again.");
+    }
   }
 
   function handleExitDemo() {
@@ -188,8 +196,11 @@ function SettingsForm() {
             Currency display is fixed to USD for this demo. Density and additional preferences will expand in a future milestone.
           </p>
           <div className="rounded-xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted leading-relaxed">
-            This is a demo build of RealOffer AI. All property data, comparables, and calculations run locally in your
-            browser — nothing is sent to a server or third-party data provider.
+            This is a demo build of RealOffer AI. Your saved deals, notes, and settings are stored only in this
+            browser — never on a server.{" "}
+            {propertyDataMode === "rentcast"
+              ? "Property lookups are sent server-side to RentCast to retrieve real property, listing, and valuation data for the address you enter."
+              : "Property data mode is currently set to demo, so property details and comparables are generated locally and never sent to a third-party data provider."}
           </div>
         </section>
 
@@ -213,6 +224,13 @@ function SettingsForm() {
             </button>
           </div>
         </section>
+
+        {saveError ? (
+          <div className="flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3.5 text-sm text-red-300">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+            {saveError}
+          </div>
+        ) : null}
 
         <button
           type="submit"
