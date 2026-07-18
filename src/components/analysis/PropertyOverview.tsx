@@ -4,9 +4,26 @@ import { SourceBadge, type SourceBadgeKind } from "@/components/shared/SourceBad
 import { PROPERTY_TYPE_LABELS } from "@/lib/property/labels";
 import type { PropertyRecord } from "@/lib/property/types";
 
-type FactCard = { icon: LucideIcon; label: string; value: string; badge: SourceBadgeKind };
-type DetailRow = { label: string; value: string; badge: SourceBadgeKind };
+type FactCard = { icon: LucideIcon; label: string; value: string; badge: SourceBadgeKind; title?: string };
+type DetailRow = { label: string; value: string; badge: SourceBadgeKind; title?: string };
 type QuickFacts = { typeLabel: string; statsLine: string | null; metaLine: string | null };
+
+/** Explains *why* a field reads "Not available" rather than leaving it
+ * ambiguous whether that's a provider gap, a demo-data limitation, or an
+ * app bug — shown as a hover title so the compact fact cards stay compact. */
+function unavailableTitle(isReal: boolean): string {
+  return isReal
+    ? "Not available from the property data provider."
+    : "Not available in this simulated demo data.";
+}
+
+/** Shared shape for a present-or-unavailable field: picks the display value,
+ * badge, and (when unavailable) hover title in one place instead of
+ * repeating the same three-way ternary at every call site. */
+function field(present: boolean, value: string, badgeWhenPresent: SourceBadgeKind, isReal: boolean): { value: string; badge: SourceBadgeKind; title?: string } {
+  if (present) return { value, badge: isReal ? badgeWhenPresent : "demo" };
+  return { value: "Not available", badge: "unavailable", title: unavailableTitle(isReal) };
+}
 
 function buildQuickFacts(property: PropertyRecord): QuickFacts {
   const statsParts: string[] = [];
@@ -28,104 +45,83 @@ function buildQuickFacts(property: PropertyRecord): QuickFacts {
 
 function buildKeyFacts(property: PropertyRecord): FactCard[] {
   const isReal = property.source === "rentcast";
-  const demoOr = (kind: SourceBadgeKind): SourceBadgeKind => (isReal ? kind : "demo");
 
   return [
-    {
-      icon: BedDouble,
-      label: "Bedrooms",
-      value: property.bedrooms !== null ? String(property.bedrooms) : "Not available",
-      badge: property.bedrooms !== null ? demoOr("provider_record") : "unavailable",
-    },
-    {
-      icon: Bath,
-      label: "Bathrooms",
-      value: property.bathrooms !== null ? String(property.bathrooms) : "Not available",
-      badge: property.bathrooms !== null ? demoOr("provider_record") : "unavailable",
-    },
+    { icon: BedDouble, label: "Bedrooms", ...field(property.bedrooms !== null, String(property.bedrooms), "provider_record", isReal) },
+    { icon: Bath, label: "Bathrooms", ...field(property.bathrooms !== null, String(property.bathrooms), "provider_record", isReal) },
     {
       icon: Home,
       label: "Property type",
       value: PROPERTY_TYPE_LABELS[property.propertyType],
-      badge: demoOr("provider_record"),
+      badge: isReal ? "provider_record" : "demo",
     },
     {
       icon: Ruler,
       label: "Square footage",
-      value: property.squareFootage !== null ? `${property.squareFootage.toLocaleString()} sqft` : "Not available",
-      badge: property.squareFootage !== null ? demoOr("provider_record") : "unavailable",
+      ...field(property.squareFootage !== null, `${property.squareFootage?.toLocaleString()} sqft`, "provider_record", isReal),
     },
-    {
-      icon: CalendarDays,
-      label: "Year built",
-      value: property.yearBuilt !== null ? String(property.yearBuilt) : "Not available",
-      badge: property.yearBuilt !== null ? demoOr("provider_record") : "unavailable",
-    },
+    { icon: CalendarDays, label: "Year built", ...field(property.yearBuilt !== null, String(property.yearBuilt), "provider_record", isReal) },
     {
       icon: LandPlot,
       label: "Lot size",
-      value: property.lotSizeSqft !== null ? `${property.lotSizeSqft.toLocaleString()} sqft` : "Not available",
-      badge: property.lotSizeSqft !== null ? demoOr("provider_record") : "unavailable",
+      ...field(property.lotSizeSqft !== null, `${property.lotSizeSqft?.toLocaleString()} sqft`, "provider_record", isReal),
     },
     {
       icon: Tag,
       label: "List price",
-      value: property.listPriceCents !== null ? formatCents(property.listPriceCents) : "Not available",
-      badge: property.listPriceCents !== null ? demoOr("active_listing") : "unavailable",
+      ...field(property.listPriceCents !== null, formatCents(property.listPriceCents ?? 0), "active_listing", isReal),
     },
     {
       icon: Clock3,
       label: "Days on market",
-      value: property.daysOnMarket !== null ? String(property.daysOnMarket) : "Not available",
-      badge: property.daysOnMarket !== null ? demoOr("active_listing") : "unavailable",
+      ...field(property.daysOnMarket !== null, String(property.daysOnMarket), "active_listing", isReal),
     },
     {
       icon: Receipt,
       label: "HOA fee",
-      value: property.hoaFeeCents !== null ? `${formatCents(property.hoaFeeCents)}/mo` : "Not available",
-      badge: property.hoaFeeCents !== null ? demoOr("active_listing") : "unavailable",
+      ...field(property.hoaFeeCents !== null, `${formatCents(property.hoaFeeCents ?? 0)}/mo`, "active_listing", isReal),
     },
     {
       icon: Gauge,
       label: "Current estimated value (AVM)",
-      value: property.currentValueCents !== null ? formatCents(property.currentValueCents) : "Not available",
-      badge: property.currentValueCents !== null ? demoOr("automated_estimate") : "unavailable",
+      ...field(property.currentValueCents !== null, formatCents(property.currentValueCents ?? 0), "automated_estimate", isReal),
     },
   ];
 }
 
 function buildAdditionalDetails(property: PropertyRecord): DetailRow[] {
   const isReal = property.source === "rentcast";
-  const demoOr = (kind: SourceBadgeKind): SourceBadgeKind => (isReal ? kind : "demo");
 
   return [
     {
       label: "Listing status",
       value: property.listingStatus ?? "No active listing found",
-      badge: property.listingStatus ? demoOr("active_listing") : "unavailable",
+      badge: property.listingStatus !== null ? (isReal ? "active_listing" : "demo") : "unavailable",
+      title: property.listingStatus === null ? "No active listing was found for this property from the property data provider." : undefined,
     },
     {
       label: "Last sale",
-      value:
+      ...field(
+        property.lastSaleDate !== null && property.lastSalePriceCents !== null,
         property.lastSaleDate && property.lastSalePriceCents !== null
           ? `${formatCents(property.lastSalePriceCents)} (${new Date(property.lastSaleDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })})`
-          : "Not available",
-      badge: property.lastSaleDate ? demoOr("provider_record") : "unavailable",
+          : "",
+        "provider_record",
+        isReal,
+      ),
     },
     {
       label: "Tax assessed value",
-      value: property.taxAssessedValueCents !== null ? formatCents(property.taxAssessedValueCents) : "Not available",
-      badge: property.taxAssessedValueCents !== null ? demoOr("provider_record") : "unavailable",
+      ...field(property.taxAssessedValueCents !== null, formatCents(property.taxAssessedValueCents ?? 0), "provider_record", isReal),
     },
     {
       label: "MLS #",
-      value: property.mlsId ?? "Not available",
-      badge: property.mlsId ? demoOr("active_listing") : "unavailable",
+      ...field(property.mlsId !== null, property.mlsId ?? "", "active_listing", isReal),
     },
     {
       label: "Data last retrieved",
       value: new Date(property.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      badge: demoOr("provider_record"),
+      badge: isReal ? "provider_record" : "demo",
     },
   ];
 }
@@ -156,7 +152,9 @@ export function PropertyOverview({ property }: { property: PropertyRecord }) {
               <fact.icon className="h-3.5 w-3.5 shrink-0 text-white/40 transition-colors duration-200 group-hover:text-white/60" strokeWidth={1.75} />
               <span className="text-[11px] leading-tight">{fact.label}</span>
             </div>
-            <p className="mt-2 text-sm sm:text-base font-semibold text-white tabular-nums leading-snug break-words">{fact.value}</p>
+            <p className="mt-2 text-sm sm:text-base font-semibold text-white tabular-nums leading-snug break-words" title={fact.title}>
+              {fact.value}
+            </p>
             <div className="mt-2">
               <SourceBadge kind={fact.badge} />
             </div>
@@ -171,7 +169,7 @@ export function PropertyOverview({ property }: { property: PropertyRecord }) {
         {details.map((row) => (
           <div key={row.label}>
             <dt className="text-xs text-muted mb-1">{row.label}</dt>
-            <dd className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-white">
+            <dd className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-white" title={row.title}>
               {row.value}
               <SourceBadge kind={row.badge} />
             </dd>

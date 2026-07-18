@@ -54,6 +54,9 @@ export type PropertyRecord = {
   address: NormalizedAddress;
 
   // Property-record facts (RentCast /v1/properties, or generated for demo).
+  // bedrooms/bathrooms/squareFootage fall back to the active listing
+  // (/v1/listings/sale) when the public-record source is missing them —
+  // see applyListing() in rentcast/normalize.ts.
   bedrooms: number | null;
   bathrooms: number | null;
   squareFootage: number | null;

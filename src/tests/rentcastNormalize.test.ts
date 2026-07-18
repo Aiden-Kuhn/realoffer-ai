@@ -116,6 +116,60 @@ describe("applyListing", () => {
     // property-record facts are still present — "no listing" isn't "no property"
     expect(withoutListing.bedrooms).toBe(3);
   });
+
+  it("fills bedrooms/bathrooms/squareFootage from the listing when the base property record is missing them", () => {
+    // Regression test: RentCast's public-record source (/v1/properties) can
+    // lack these fields even when the active listing (what Zillow shows)
+    // has them — applyListing must not silently discard the listing's
+    // values for the fields it actually carries.
+    const sparse: RentCastPropertyRecord = { id: "x", formattedAddress: "1 Sparse St", city: "San Antonio", state: "TX", zipCode: "78244" };
+    const sparseProperty = normalizePropertyRecord(sparse, address);
+    expect(sparseProperty.bedrooms).toBeNull();
+    expect(sparseProperty.bathrooms).toBeNull();
+    expect(sparseProperty.squareFootage).toBeNull();
+
+    const listing: RentCastSaleListing = {
+      id: "listing-2",
+      formattedAddress: "1 Sparse St, San Antonio, TX 78244",
+      bedrooms: 4,
+      bathrooms: 2.5,
+      squareFootage: 2100,
+      price: 450000,
+      status: "Active",
+    };
+    const withListing = applyListing(sparseProperty, listing);
+    expect(withListing.bedrooms).toBe(4);
+    expect(withListing.bathrooms).toBe(2.5);
+    expect(withListing.squareFootage).toBe(2100);
+  });
+
+  it("never overrides bedrooms/bathrooms/squareFootage already present on the base property record", () => {
+    // The property record's own value is preferred — the listing is a
+    // fallback for gaps, not a source of truth that overwrites it.
+    const listing: RentCastSaleListing = {
+      id: "listing-3",
+      formattedAddress: fullRecord.formattedAddress,
+      bedrooms: 5,
+      bathrooms: 4,
+      squareFootage: 9999,
+      price: 500000,
+      status: "Active",
+    };
+    const withListing = applyListing(base, listing);
+    expect(withListing.bedrooms).toBe(3);
+    expect(withListing.bathrooms).toBe(2);
+    expect(withListing.squareFootage).toBe(1878);
+  });
+
+  it("leaves bedrooms/bathrooms/squareFootage null when neither the property record nor the listing has them", () => {
+    const sparse: RentCastPropertyRecord = { id: "x", formattedAddress: "1 Empty St", city: "Nowhere", state: "TX", zipCode: "00000" };
+    const sparseProperty = normalizePropertyRecord(sparse, address);
+    const listing: RentCastSaleListing = { id: "listing-4", formattedAddress: "1 Empty St", price: 200000, status: "Active" };
+    const withListing = applyListing(sparseProperty, listing);
+    expect(withListing.bedrooms).toBeNull();
+    expect(withListing.bathrooms).toBeNull();
+    expect(withListing.squareFootage).toBeNull();
+  });
 });
 
 describe("applyValuation", () => {

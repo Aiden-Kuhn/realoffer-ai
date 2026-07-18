@@ -93,12 +93,22 @@ function buildFallbackDescription(raw: RentCastPropertyRecord): string {
   return details ? `${typeLabel} in ${raw.city}, ${raw.state}. ${details}.` : `${typeLabel} in ${raw.city}, ${raw.state}.`;
 }
 
-/** Merges active-listing fields onto an existing property record. Pass null when no listing was found. */
+/** Merges active-listing fields onto an existing property record. Pass null when no listing was found.
+ *
+ * Bedrooms/bathrooms/square footage fall back to the listing's values when
+ * the base property record (RentCast's public-record data) is missing
+ * them — the active listing mirrors what's on the MLS/Zillow, and RentCast's
+ * public-record source can lag or omit these fields even when the listing
+ * itself has them. The property record's own value always wins when present;
+ * this only fills gaps, never overrides. */
 export function applyListing(property: PropertyRecord, listing: (RentCastSaleListing & { description?: string }) | null): PropertyRecord {
   if (!listing) return property;
 
   return {
     ...property,
+    bedrooms: property.bedrooms ?? listing.bedrooms ?? null,
+    bathrooms: property.bathrooms ?? listing.bathrooms ?? null,
+    squareFootage: property.squareFootage ?? listing.squareFootage ?? null,
     listPriceCents: toCentsOrNull(listing.price),
     originalListPriceCents: toCentsOrNull(listing.price),
     listingStatus: listing.status ?? "Active",
