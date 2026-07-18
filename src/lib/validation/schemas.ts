@@ -64,14 +64,28 @@ export const listingLinkSchema = z.object({
 
 export type ListingLinkFormValues = z.infer<typeof listingLinkSchema>;
 
-export const demoAuthSchema = z.object({
-  name: z.string().trim().min(2, "Enter your name."),
+export const loginSchema = z.object({
   email: z.string().trim().email("Enter a valid email address."),
-  companyName: z.string().trim().optional(),
-  password: z.string().optional(),
+  password: z.string().min(1, "Enter your password."),
 });
 
-export type DemoAuthFormValues = z.infer<typeof demoAuthSchema>;
+export type LoginFormValues = z.infer<typeof loginSchema>;
+
+export const signupSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Enter your name."),
+    companyName: z.string().trim().optional(),
+    email: z.string().trim().email("Enter a valid email address."),
+    // Supabase's default minimum password length is 6 characters.
+    password: z.string().min(6, "Password must be at least 6 characters."),
+    confirmPassword: z.string().min(1, "Re-enter your password."),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match.",
+    path: ["confirmPassword"],
+  });
+
+export type SignupFormValues = z.infer<typeof signupSchema>;
 
 export const settingsSchema = z.object({
   fullName: z.string().trim().optional(),

@@ -18,11 +18,11 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
   const { user, signOut } = useAuth();
   const propertyDataMode = usePropertyDataMode();
 
-  function handleExitDemo() {
-    signOut();
-    // Full navigation, not router.push: the dashboard's own auth guard would
-    // otherwise race this client-side transition and redirect to /login
-    // before it lands on the marketing page.
+  async function handleSignOut() {
+    await signOut();
+    // Full navigation, not router.push: ensures the server-side auth guard
+    // in app/dashboard/layout.tsx sees the cleared session on next request
+    // rather than racing a client-side transition.
     window.location.href = "/";
   }
 
@@ -102,36 +102,30 @@ export function Sidebar({ collapsed, onToggleCollapsed, onNavigate }: SidebarPro
               {propertyDataMode === "rentcast" ? <Satellite className="h-3 w-3" /> : <FlaskConical className="h-3 w-3" />}
               {propertyDataMode === "rentcast" ? "RentCast Live Data" : "Demo Property Data"}
             </span>
-            <span
-              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-white/50"
-              title="Login is simulated in this build — no real accounts or passwords"
-            >
-              Demo Auth
-            </span>
           </div>
         ) : null}
 
         <div className={`flex items-center gap-2.5 rounded-lg px-1 py-1.5 ${collapsed ? "justify-center" : ""}`}>
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
-            {(user?.name ?? "D")[0].toUpperCase()}
+            {(user?.fullName || user?.email || "U")[0].toUpperCase()}
           </span>
           {!collapsed ? (
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{user?.name || "Demo user"}</p>
-              <p className="truncate text-xs text-muted">{user?.email || "demo@realoffer.ai"}</p>
+              <p className="truncate text-sm font-medium text-white">{user?.fullName || "Account"}</p>
+              <p className="truncate text-xs text-muted">{user?.email}</p>
             </div>
           ) : null}
         </div>
 
         <button
           type="button"
-          onClick={handleExitDemo}
+          onClick={handleSignOut}
           className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.04] active:scale-[0.98] transition-all duration-150 ${
             collapsed ? "justify-center" : ""
           }`}
         >
           <LogOut className="h-4 w-4" strokeWidth={1.85} />
-          {!collapsed ? "Exit Demo" : null}
+          {!collapsed ? "Log out" : null}
         </button>
       </div>
     </nav>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, FolderSearch } from "lucide-react";
+import { AlertTriangle, Search, FolderSearch } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useMounted } from "@/hooks/useMounted";
 import { useDeals } from "@/hooks/useDeals";
@@ -23,13 +23,26 @@ const SORT_OPTIONS: Array<{ value: DealSortField; label: string }> = [
 export function DealsListPage() {
   useSetPageHeader("Saved Deals");
   const mounted = useMounted();
-  const { deals, deleteDeal } = useDeals();
+  const { deals, isLoading: dealsLoading, deleteDeal } = useDeals();
 
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<DealPipelineStatus | "all">("all");
   const [sortBy, setSortBy] = useState<DealSortField>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleConfirmDelete() {
+    if (!pendingDeleteId) return;
+    setDeleteError(null);
+    try {
+      await deleteDeal(pendingDeleteId);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Couldn't delete this deal. Please try again.");
+    } finally {
+      setPendingDeleteId(null);
+    }
+  }
 
   const visibleDeals = useMemo(() => {
     let result = dealRepository.search(deals, query);
@@ -38,7 +51,7 @@ export function DealsListPage() {
     return result;
   }, [deals, query, statusFilter, sortBy, sortDirection]);
 
-  if (!mounted) {
+  if (!mounted || dealsLoading) {
     return (
       <div className="flex flex-col gap-6">
         <div>
@@ -63,8 +76,15 @@ export function DealsListPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-white">Saved deals</h1>
-        <p className="mt-1 text-sm text-muted">Demo deals are saved only in this browser — not synced to any account or cloud storage.</p>
+        <p className="mt-1 text-sm text-muted">Saved to your account — available from any device you log in on.</p>
       </div>
+
+      {deleteError ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3.5 text-sm text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          {deleteError}
+        </div>
+      ) : null}
 
       {deals.length === 0 ? (
         <EmptyState
@@ -139,13 +159,10 @@ export function DealsListPage() {
       <ConfirmDialog
         open={pendingDeleteId !== null}
         title="Delete this deal?"
-        description="This will permanently remove the saved analysis from this browser. This cannot be undone."
+        description="This will permanently remove the saved analysis from your account. This cannot be undone."
         confirmLabel="Delete"
         destructive
-        onConfirm={() => {
-          if (pendingDeleteId) deleteDeal(pendingDeleteId);
-          setPendingDeleteId(null);
-        }}
+        onConfirm={handleConfirmDelete}
         onCancel={() => setPendingDeleteId(null)}
       />
     </div>

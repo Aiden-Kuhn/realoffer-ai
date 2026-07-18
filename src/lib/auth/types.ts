@@ -1,18 +1,21 @@
 /**
- * Demo-only session shape. This is intentionally minimal so a real
- * provider (e.g. Supabase) can be swapped in behind the same AuthProvider
- * / useAuth contract without touching consuming components.
+ * App-facing user shape, derived from Supabase's `User` object so consuming
+ * components never touch the Supabase SDK types directly.
  */
-export type DemoUser = {
-  name: string;
+export type AppUser = {
+  id: string;
   email: string;
+  fullName: string;
   companyName: string;
   createdAt: string;
 };
 
+export type AuthResult = { error: string | null };
+
 export interface AuthProviderContract {
-  user: DemoUser | null;
+  user: AppUser | null;
   isLoading: boolean;
-  signIn(input: { name: string; email: string; companyName?: string }): void;
-  signOut(): void;
+  signIn(input: { email: string; password: string }): Promise<AuthResult>;
+  signUp(input: { email: string; password: string; fullName?: string; companyName?: string }): Promise<AuthResult & { needsEmailConfirmation: boolean }>;
+  signOut(): Promise<void>;
 }

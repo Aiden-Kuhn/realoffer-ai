@@ -4,23 +4,27 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useMounted } from "@/hooks/useMounted";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { PageHeaderProvider } from "@/components/dashboard/PageHeaderContext";
 
+/**
+ * The layout's Server Component already redirects unauthenticated visitors
+ * before any HTML ships (see app/dashboard/layout.tsx) — the check here is
+ * a client-side fallback only, for a session that expires or is signed out
+ * (e.g. in another tab) after that initial server check already passed.
+ */
 export function DashboardShell({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  const mounted = useMounted();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
-    if (mounted && !user) {
+    if (!isLoading && !user) {
       router.replace("/login");
     }
-  }, [mounted, user, router]);
+  }, [isLoading, user, router]);
 
   useEffect(() => {
     document.body.style.overflow = mobileNavOpen ? "hidden" : "";
@@ -29,7 +33,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     };
   }, [mobileNavOpen]);
 
-  if (!mounted || !user) {
+  if (isLoading || !user) {
     return (
       <div className="flex h-dvh items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-accent-3" />

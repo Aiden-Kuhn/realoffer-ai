@@ -7,6 +7,7 @@ import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDeals } from "@/hooks/useDeals";
 import { useMounted } from "@/hooks/useMounted";
+import { dealRepository } from "@/lib/repositories/dealRepository";
 import { computeDashboardStats } from "@/lib/dashboardStats";
 import { formatCents } from "@/lib/calculations/money";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -19,26 +20,31 @@ export function OverviewPage() {
   useSetPageHeader("Overview");
   const mounted = useMounted();
   const { user } = useAuth();
-  const { deals, saveDeal } = useDeals();
+  const { deals, isLoading: dealsLoading, refresh } = useDeals();
   const [loadingSamples, setLoadingSamples] = useState(false);
+  const [samplesError, setSamplesError] = useState<string | null>(null);
 
   const stats = computeDashboardStats(deals);
   const recentDeals = deals.slice(0, 5);
-  const firstName = user?.name?.split(" ")[0] || "there";
+  const firstName = user?.fullName?.split(" ")[0] || "there";
 
   async function handleLoadSamples() {
     setLoadingSamples(true);
+    setSamplesError(null);
     try {
       const samples = await generateSampleDeals();
-      for (const deal of samples) {
-        saveDeal(deal);
-      }
+      // Save in parallel and refresh once at the end, rather than
+      // refetching the whole deal list after each individual save.
+      await Promise.all(samples.map((deal) => dealRepository.save(deal)));
+      await refresh();
+    } catch (error) {
+      setSamplesError(error instanceof Error ? error.message : "Couldn't load sample deals. Please try again.");
     } finally {
       setLoadingSamples(false);
     }
   }
 
-  if (!mounted) {
+  if (!mounted || dealsLoading) {
     return (
       <div className="flex flex-col gap-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -94,22 +100,25 @@ export function OverviewPage() {
           title="No deals yet"
           description="Analyze your first property to see it here, or load a set of sample deals to explore the dashboard with realistic demo data."
           action={
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <Link
-                href="/dashboard/analyze"
-                className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
-              >
-                Analyze a property
-              </Link>
-              <button
-                type="button"
-                onClick={handleLoadSamples}
-                disabled={loadingSamples}
-                className="inline-flex items-center gap-2 h-10 rounded-full border border-border px-4 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
-              >
-                <Sparkles className="h-4 w-4" />
-                {loadingSamples ? "Loading sample deals..." : "Load sample deals"}
-              </button>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Link
+                  href="/dashboard/analyze"
+                  className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
+                >
+                  Analyze a property
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLoadSamples}
+                  disabled={loadingSamples}
+                  className="inline-flex items-center gap-2 h-10 rounded-full border border-border px-4 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {loadingSamples ? "Loading sample deals..." : "Load sample deals"}
+                </button>
+              </div>
+              {samplesError ? <p className="text-xs text-red-400">{samplesError}</p> : null}
             </div>
           }
         />

@@ -40,13 +40,13 @@ import { computeDealScore } from "@/lib/investmentAnalysis/dealScore";
 
 export function DealWorkspace({ id }: { id: string }) {
   const mounted = useMounted();
-  const { deal, isSaved } = useDeal(id);
+  const { deal, isSaved, isLoading } = useDeal(id);
 
   const addressLine = deal ? deal.property.address.line1 : "Deal";
   const breadcrumbs = useMemo(() => ["Saved Deals", addressLine], [addressLine]);
   useSetPageHeader(addressLine, breadcrumbs);
 
-  if (!mounted) {
+  if (!mounted || isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-accent-3" />
@@ -127,7 +127,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     return computeDealScore(context);
   }, [property, comparables, repairEstimate, assumptions, results]);
 
-  function handleSave() {
+  async function handleSave() {
     if (!results) return;
     setIsSaving(true);
     setActionError(null);
@@ -144,7 +144,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
       dataMode: property.source === "rentcast" ? "real" : "demo",
     };
     try {
-      dealRepository.save(toSave);
+      await dealRepository.save(toSave);
       clearDraftDeal(deal.id);
       setJustSaved(true);
       window.setTimeout(() => setJustSaved(false), 2000);
@@ -155,20 +155,20 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     }
   }
 
-  function handleDuplicate() {
+  async function handleDuplicate() {
     setActionError(null);
     try {
-      const copy = dealRepository.duplicate(deal.id);
+      const copy = await dealRepository.duplicate(deal.id);
       if (copy) router.push(`/dashboard/deals/${copy.id}`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Couldn't duplicate this deal. Please try again.");
     }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     setActionError(null);
     try {
-      dealRepository.delete(deal.id);
+      await dealRepository.delete(deal.id);
       if (!isSaved) clearDraftDeal(deal.id);
       router.push("/dashboard/deals");
     } catch (error) {
@@ -378,7 +378,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
       <ConfirmDialog
         open={deleteOpen}
         title="Delete this deal?"
-        description="This will permanently remove the saved analysis from this browser. This cannot be undone."
+        description="This will permanently remove the saved analysis from your account. This cannot be undone."
         confirmLabel="Delete"
         destructive
         onConfirm={handleDelete}

@@ -11,6 +11,7 @@ import { propertyDataProvider } from "@/lib/property/mockPropertyDataProvider";
 import { analyzePropertyAddress } from "@/lib/property/providerSelection";
 import { usePropertyDataMode } from "@/hooks/usePropertyDataMode";
 import { createDealFromProperty } from "@/lib/calculations/createDeal";
+import { DEFAULT_SETTINGS } from "@/config/defaults";
 import { settingsRepository } from "@/lib/repositories/settingsRepository";
 import { saveDraftDeal } from "@/lib/repositories/draftDealStore";
 import { describeProviderErrorCode } from "@/lib/property/errorMessages";
@@ -94,13 +95,14 @@ export function AnalyzePage() {
     }
   }
 
-  /** Returns true on success. A storage failure here is a local-browser
-   * problem, not a provider problem — it gets its own message and must not
-   * be treated as retryable via a fresh provider lookup. */
-  function finalizeAndNavigate(property: PropertyRecord, overrides?: ManualPropertyOverrides): boolean {
+  /** Returns true on success. Settings come from Supabase (falls back to
+   * defaults on failure so a settings-fetch hiccup never blocks starting an
+   * analysis); the draft itself is still a local sessionStorage cache until
+   * the user explicitly saves it (see draftDealStore.ts). */
+  async function finalizeAndNavigate(property: PropertyRecord, overrides?: ManualPropertyOverrides): Promise<boolean> {
     try {
       const finalProperty = overrides ? applyOverrides(property, overrides) : property;
-      const settings = settingsRepository.get();
+      const settings = await settingsRepository.get().catch(() => DEFAULT_SETTINGS);
       const deal = createDealFromProperty(finalProperty, settings);
       deal.status = "analyzing";
       saveDraftDeal(deal);
@@ -125,7 +127,7 @@ export function AnalyzePage() {
       stopSteps();
 
       if (result.status === "ok") {
-        finalizeAndNavigate(result.property, overrides);
+        await finalizeAndNavigate(result.property, overrides);
         return;
       }
       if (result.status === "ambiguous") {
@@ -155,7 +157,7 @@ export function AnalyzePage() {
     try {
       const result = await propertyDataProvider.getPropertyByAddress(pendingRef.current.address);
       if (result.status === "ok") {
-        finalizeAndNavigate(result.property, pendingRef.current.overrides);
+        await finalizeAndNavigate(result.property, pendingRef.current.overrides);
       } else {
         setErrorCode("unknown");
         setPhase("error");

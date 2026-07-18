@@ -1,129 +1,118 @@
 import { normalizeLegacyDeal } from "@/lib/repositories/dealMigration";
+import { createClient } from "@/lib/supabase/client";
 import type { Deal, DealPipelineStatus } from "@/types/deal";
+import type { Database } from "@/lib/supabase/database.types";
 
 export type DealSortField = "date" | "arv" | "assignmentFee" | "profit";
 export type SortDirection = "asc" | "desc";
 
-/** Thrown when a write to localStorage fails (quota exceeded, private
- * browsing with storage disabled, etc.) — callers should catch this and
- * show the user a clear message rather than letting it crash the UI. */
+/** Thrown when a Supabase read/write fails (network error, RLS rejection,
+ * not signed in, etc.) — callers should catch this and show the user a
+ * clear message rather than letting it crash the UI. */
 export class DealStorageError extends Error {
-  constructor(message = "Couldn't save changes — your browser's local storage might be full or unavailable (e.g. private browsing).") {
+  constructor(message = "Couldn't reach your saved deals — check your connection and try again.") {
     super(message);
     this.name = "DealStorageError";
   }
 }
 
+type DealRow = Database["public"]["Tables"]["deals"]["Row"];
+
+function rowToDeal(row: DealRow): Deal {
+  return normalizeLegacyDeal({
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    status: row.status,
+    notes: row.notes,
+    isSample: row.is_sample,
+    dataMode: row.data_mode,
+    property: row.property,
+    comparables: row.comparables,
+    assumptions: row.assumptions,
+    repairEstimate: row.repair_estimate,
+    results: row.results,
+    investmentAnalysis: row.investment_analysis ?? undefined,
+  });
+}
+
+async function requireUserId(): Promise<string> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new DealStorageError("You're not signed in — please log in again.");
+  return session.user.id;
+}
+
 export interface DealRepository {
-  list(): Deal[];
-  get(id: string): Deal | null;
-  save(deal: Deal): Deal;
-  delete(id: string): void;
-  duplicate(id: string): Deal | null;
+  list(): Promise<Deal[]>;
+  get(id: string): Promise<Deal | null>;
+  save(deal: Deal): Promise<Deal>;
+  delete(id: string): Promise<void>;
+  duplicate(id: string): Promise<Deal | null>;
   search(deals: Deal[], query: string): Deal[];
   filterByStatus(deals: Deal[], status: DealPipelineStatus | "all"): Deal[];
   sort(deals: Deal[], by: DealSortField, direction: SortDirection): Deal[];
 }
 
-const STORAGE_KEY = "realoffer_demo_deals_v1";
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
-
-type Listener = () => void;
-let listeners: Listener[] = [];
-
-function emitChange(): void {
-  for (const listener of listeners) listener();
-}
-
-/** Subscribe to deal-store changes (same-tab writes and cross-tab storage events). */
-export function subscribeToDeals(onChange: Listener): () => void {
-  listeners = [...listeners, onChange];
-  window.addEventListener("storage", onChange);
-  return () => {
-    listeners = listeners.filter((l) => l !== onChange);
-    window.removeEventListener("storage", onChange);
-  };
-}
-
-let cachedRaw: string | null = null;
-let cachedDeals: Deal[] = [];
-
-/** Stable-reference snapshot for useSyncExternalStore — only reparses when the underlying JSON changes. */
-export function getDealsSnapshot(): Deal[] {
-  if (!isBrowser()) return cachedDeals;
-  const raw = window.localStorage.getItem(STORAGE_KEY);
-  if (raw === cachedRaw) return cachedDeals;
-  cachedRaw = raw;
-  try {
-    const parsed = raw ? JSON.parse(raw) : [];
-    cachedDeals = Array.isArray(parsed) ? parsed.map(normalizeLegacyDeal) : [];
-  } catch {
-    cachedDeals = [];
-  }
-  return cachedDeals;
-}
-
-export function getServerDealsSnapshot(): Deal[] {
-  return [];
-}
-
-function readAll(): Deal[] {
-  return getDealsSnapshot();
-}
-
-function writeAll(deals: Deal[]): void {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(deals));
-  } catch {
-    throw new DealStorageError();
-  }
-  emitChange();
-}
-
-export class LocalStorageDealRepository implements DealRepository {
-  list(): Deal[] {
-    return [...readAll()].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+export class SupabaseDealRepository implements DealRepository {
+  async list(): Promise<Deal[]> {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("deals").select("*").order("created_at", { ascending: false });
+    if (error) throw new DealStorageError();
+    return (data ?? []).map(rowToDeal);
   }
 
-  get(id: string): Deal | null {
-    return readAll().find((d) => d.id === id) ?? null;
+  async get(id: string): Promise<Deal | null> {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("deals").select("*").eq("id", id).maybeSingle();
+    if (error) throw new DealStorageError();
+    return data ? rowToDeal(data) : null;
   }
 
-  save(deal: Deal): Deal {
-    const all = [...readAll()];
-    const index = all.findIndex((d) => d.id === deal.id);
-    const now = new Date().toISOString();
-    const toSave: Deal = { ...deal, updatedAt: now, createdAt: deal.createdAt ?? now };
-
-    if (index >= 0) {
-      all[index] = toSave;
-    } else {
-      all.push(toSave);
-    }
-    writeAll(all);
-    return toSave;
+  async save(deal: Deal): Promise<Deal> {
+    const userId = await requireUserId();
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("deals")
+      .upsert(
+        {
+          id: deal.id,
+          user_id: userId,
+          status: deal.status,
+          notes: deal.notes,
+          is_sample: deal.isSample ?? false,
+          data_mode: deal.dataMode,
+          property: deal.property,
+          comparables: deal.comparables,
+          assumptions: deal.assumptions,
+          repair_estimate: deal.repairEstimate,
+          results: deal.results,
+          investment_analysis: deal.investmentAnalysis ?? null,
+        },
+        { onConflict: "id" },
+      )
+      .select()
+      .single();
+    if (error || !data) throw new DealStorageError();
+    return rowToDeal(data);
   }
 
-  delete(id: string): void {
-    const all = readAll().filter((d) => d.id !== id);
-    writeAll(all);
+  async delete(id: string): Promise<void> {
+    const supabase = createClient();
+    const { error } = await supabase.from("deals").delete().eq("id", id);
+    if (error) throw new DealStorageError();
   }
 
-  duplicate(id: string): Deal | null {
-    const original = this.get(id);
+  async duplicate(id: string): Promise<Deal | null> {
+    const original = await this.get(id);
     if (!original) return null;
 
-    const now = new Date().toISOString();
     const copy: Deal = {
       ...original,
       id: crypto.randomUUID(),
       status: "draft",
-      createdAt: now,
-      updatedAt: now,
       notes: original.notes,
       property: { ...original.property, address: { ...original.property.address } },
     };
@@ -165,4 +154,4 @@ function resolveArv(deal: Deal): number {
   return deal.assumptions.arvOverrideCents ?? deal.property.arvExpectedCents;
 }
 
-export const dealRepository: DealRepository = new LocalStorageDealRepository();
+export const dealRepository: DealRepository = new SupabaseDealRepository();

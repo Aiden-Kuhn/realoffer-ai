@@ -132,7 +132,7 @@ export function SummaryPanel({
         {justSaved ? <Check className="h-4 w-4" /> : null}
         {justSaved ? "Saved" : isSaving ? "Saving..." : "Save Deal"}
       </button>
-      <p className="text-[11px] text-muted -mt-2 text-center">Saved to this browser only — not synced to the cloud.</p>
+      <p className="text-[11px] text-muted -mt-2 text-center">Saved to your account — accessible from any device you log in on.</p>
     </aside>
   );
 }

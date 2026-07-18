@@ -1,77 +1,116 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
-import type { AuthProviderContract, DemoUser } from "@/lib/auth/types";
-
-const STORAGE_KEY = "realoffer_demo_session_v1";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import type { AppUser, AuthProviderContract, AuthResult } from "@/lib/auth/types";
 
 const AuthContext = createContext<AuthProviderContract | null>(null);
 
-type Listener = () => void;
-let listeners: Listener[] = [];
-
-function emitChange(): void {
-  for (const listener of listeners) listener();
-}
-
-function subscribe(onChange: Listener): () => void {
-  listeners = [...listeners, onChange];
-  window.addEventListener("storage", onChange);
-  return () => {
-    listeners = listeners.filter((l) => l !== onChange);
-    window.removeEventListener("storage", onChange);
+function toAppUser(user: User | null): AppUser | null {
+  if (!user || !user.email) return null;
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: typeof metadata.full_name === "string" ? metadata.full_name : "",
+    companyName: typeof metadata.company_name === "string" ? metadata.company_name : "",
+    createdAt: user.created_at,
   };
 }
 
-function getSnapshot(): string | null {
-  return window.localStorage.getItem(STORAGE_KEY);
-}
-
-function getServerSnapshot(): string | null {
-  return null;
-}
-
-function parseUser(raw: string | null): DemoUser | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DemoUser;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Demo-only authentication. No passwords are collected or stored. This is
- * a visual/UX simulation of an auth flow — swap the implementation for a
- * real provider (e.g. Supabase) behind this same context contract when
- * ready, without changing any consuming component.
+ * Real Supabase-backed authentication. The browser client stores its
+ * session in cookies (via @supabase/ssr), so server reads (Server
+ * Components, Server Actions, src/proxy.ts) stay in sync automatically —
+ * no manual token passing needed.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const user = useMemo(() => parseUser(raw), [raw]);
+  const supabase = useMemo(() => createClient(), []);
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  const signIn = useCallback<AuthProviderContract["signIn"]>(({ name, email, companyName }) => {
-    const nextUser: DemoUser = {
-      name: name.trim(),
-      email: email.trim(),
-      companyName: companyName?.trim() ?? "",
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    mountedRef.current = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mountedRef.current) return;
+      setUser(toAppUser(data.session?.user ?? null));
+      setIsLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mountedRef.current) return;
+      setUser(toAppUser(session?.user ?? null));
+      setIsLoading(false);
+    });
+
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
     };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-    emitChange();
-  }, []);
+  }, [supabase]);
 
-  const signOut = useCallback(() => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    emitChange();
-  }, []);
+  const signIn = useCallback<AuthProviderContract["signIn"]>(
+    async ({ email, password }) => {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      return { error: error ? friendlyAuthError(error.message) : null };
+    },
+    [supabase],
+  );
+
+  const signUp = useCallback<AuthProviderContract["signUp"]>(
+    async ({ email, password, fullName, companyName }) => {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: fullName?.trim() ?? "",
+            company_name: companyName?.trim() ?? "",
+          },
+        },
+      });
+      if (error) return { error: friendlyAuthError(error.message), needsEmailConfirmation: false };
+      // Supabase deliberately returns 200 with no error and an empty
+      // `identities` array when the email already belongs to a confirmed
+      // account, specifically so a signup form can't be used to enumerate
+      // registered emails. Do not special-case this — show the same
+      // "check your email" outcome either way, exactly as Supabase intends.
+      // Supabase returns a user but no session when email confirmation is
+      // required (this is also true for the already-registered case above)
+      // — the caller needs to know so it can show the right UI instead of
+      // assuming an active session was created.
+      const needsEmailConfirmation = data.user !== null && data.session === null;
+      return { error: null, needsEmailConfirmation };
+    },
+    [supabase],
+  );
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+  }, [supabase]);
 
   const value = useMemo<AuthProviderContract>(
-    () => ({ user, isLoading: false, signIn, signOut }),
-    [user, signIn, signOut],
+    () => ({ user, isLoading, signIn, signUp, signOut }),
+    [user, isLoading, signIn, signUp, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/** Supabase's raw error messages are accurate but written for developers
+ * ("Invalid login credentials", "User already registered") — pass most
+ * through as-is since they're already reasonably user-facing, but smooth
+ * over the handful that read oddly in a login form. */
+function friendlyAuthError(message: string): string {
+  if (message.toLowerCase().includes("invalid login credentials")) {
+    return "Incorrect email or password.";
+  }
+  return message;
 }
 
 export function useAuth(): AuthProviderContract {
@@ -81,3 +120,5 @@ export function useAuth(): AuthProviderContract {
   }
   return ctx;
 }
+
+export type { AuthResult };
