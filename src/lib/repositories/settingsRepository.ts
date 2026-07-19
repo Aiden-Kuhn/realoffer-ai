@@ -27,6 +27,11 @@ function rowToSettings(row: SettingsRow): AppSettings {
     defaultFinancingCostPercentage: row.default_financing_cost_percentage,
     currency: DEFAULT_SETTINGS.currency,
     density: DEFAULT_SETTINGS.density,
+    mailingAddressLine1: row.mailing_address_line1,
+    mailingCity: row.mailing_city,
+    mailingState: row.mailing_state,
+    mailingZip: row.mailing_zip,
+    phone: row.phone,
   };
 }
 
@@ -73,6 +78,11 @@ export class SupabaseSettingsRepository implements SettingsRepository {
           default_buyer_closing_cost_percentage: settings.defaultBuyerClosingCostPercentage,
           default_selling_cost_percentage: settings.defaultSellingCostPercentage,
           default_financing_cost_percentage: settings.defaultFinancingCostPercentage,
+          mailing_address_line1: settings.mailingAddressLine1,
+          mailing_city: settings.mailingCity,
+          mailing_state: settings.mailingState,
+          mailing_zip: settings.mailingZip,
+          phone: settings.phone,
         },
         { onConflict: "user_id" },
       )

@@ -25,4 +25,11 @@ export const DEFAULT_SETTINGS = {
   defaultFinancingCostPercentage: DEFAULT_ASSUMPTIONS.financingCostPercentage,
   currency: "USD" as const,
   density: "comfortable" as const,
+  /** Buyer mailing address + phone, used only to prefill the contract
+   * builder's Parties section — never required to use the rest of the app. */
+  mailingAddressLine1: "",
+  mailingCity: "",
+  mailingState: "",
+  mailingZip: "",
+  phone: "",
 };

@@ -2,12 +2,20 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Trash2, ArrowLeft, FileQuestion, AlertTriangle, RefreshCw, Loader2 } from "lucide-react";
+import { Copy, Trash2, ArrowLeft, FileQuestion, AlertTriangle, RefreshCw, Loader2, FileSignature } from "lucide-react";
 import Link from "next/link";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useMounted } from "@/hooks/useMounted";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDeal } from "@/hooks/useDeal";
 import { dealRepository } from "@/lib/repositories/dealRepository";
+import { settingsRepository } from "@/lib/repositories/settingsRepository";
+import { contractRepository } from "@/lib/repositories/contractRepository";
+import {
+  buildPrefillFromDeal,
+  GENERAL_PURCHASE_AGREEMENT_TEMPLATE_ID,
+  GENERAL_PURCHASE_AGREEMENT_TEMPLATE_VERSION,
+} from "@/lib/contracts/templates/generalPurchaseAgreement";
 import { clearDraftDeal } from "@/lib/repositories/draftDealStore";
 import { buildDealFinancialResults, resolveSelectedArvCents } from "@/lib/calculations/buildDealResults";
 import { computeRepairTotalCents } from "@/lib/calculations/repairs";
@@ -77,6 +85,8 @@ export function DealWorkspace({ id }: { id: string }) {
 
 function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [isCreatingContract, setIsCreatingContract] = useState(false);
 
   const [property, setProperty] = useState<PropertyRecord>(deal.property);
   const [assumptions, setAssumptions] = useState<DealAssumptions>(deal.assumptions);
@@ -165,6 +175,26 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     }
   }
 
+  async function handleCreateContract() {
+    setActionError(null);
+    setIsCreatingContract(true);
+    try {
+      const buyerProfile = await settingsRepository.get();
+      const formData = buildPrefillFromDeal(deal, buyerProfile);
+      if (user?.email) formData.buyer.email = user.email;
+      const contract = await contractRepository.create({
+        dealId: deal.id,
+        templateId: GENERAL_PURCHASE_AGREEMENT_TEMPLATE_ID,
+        templateVersion: GENERAL_PURCHASE_AGREEMENT_TEMPLATE_VERSION,
+        formData,
+      });
+      router.push(`/dashboard/contracts/${contract.id}`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Couldn't start a purchase agreement for this deal. Please try again.");
+      setIsCreatingContract(false);
+    }
+  }
+
   async function handleDelete() {
     setActionError(null);
     try {
@@ -205,6 +235,15 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
         </Link>
         {isSaved ? (
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCreateContract}
+              disabled={isCreatingContract}
+              className="inline-flex items-center gap-1.5 h-9 rounded-full bg-white px-3.5 text-xs font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
+            >
+              {isCreatingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSignature className="h-3.5 w-3.5" />}
+              {isCreatingContract ? "Starting…" : "Create Purchase Agreement"}
+            </button>
             <button
               type="button"
               onClick={handleDuplicate}

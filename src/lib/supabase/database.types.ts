@@ -71,6 +71,11 @@ export type Database = {
           default_financing_cost_percentage: number;
           currency: string;
           density: string;
+          mailing_address_line1: string;
+          mailing_city: string;
+          mailing_state: string;
+          mailing_zip: string;
+          phone: string;
         };
         Insert: {
           user_id: string;
@@ -84,6 +89,11 @@ export type Database = {
           default_financing_cost_percentage?: number;
           currency?: string;
           density?: string;
+          mailing_address_line1?: string;
+          mailing_city?: string;
+          mailing_state?: string;
+          mailing_zip?: string;
+          phone?: string;
         };
         Update: {
           user_id?: string;
@@ -97,6 +107,53 @@ export type Database = {
           default_financing_cost_percentage?: number;
           currency?: string;
           density?: string;
+          mailing_address_line1?: string;
+          mailing_city?: string;
+          mailing_state?: string;
+          mailing_zip?: string;
+          phone?: string;
+        };
+      };
+      contracts: {
+        Relationships: [];
+        Row: {
+          id: string;
+          user_id: string;
+          deal_id: string;
+          template_id: string;
+          template_version: string;
+          jurisdiction_state: string | null;
+          status: string;
+          form_data: unknown;
+          document_snapshot: unknown | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          deal_id: string;
+          template_id: string;
+          template_version: string;
+          jurisdiction_state?: string | null;
+          status?: string;
+          form_data?: unknown;
+          document_snapshot?: unknown | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          deal_id?: string;
+          template_id?: string;
+          template_version?: string;
+          jurisdiction_state?: string | null;
+          status?: string;
+          form_data?: unknown;
+          document_snapshot?: unknown | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };
