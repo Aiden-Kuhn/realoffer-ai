@@ -29,8 +29,10 @@ export type ComparableSale = {
   distanceMiles: number;
   squareFootage: number;
   pricePerSqftCents: number;
-  bedrooms: number;
-  bathrooms: number;
+  /** Null when the provider didn't report this for the comp — never a
+   * fabricated 0 or a value borrowed from the subject property. */
+  bedrooms: number | null;
+  bathrooms: number | null;
   similarityScore: number;
   /** Whether the score above came from RentCast's own correlation figure or our documented fallback formula. */
   similaritySource: SimilarityScoreSource;

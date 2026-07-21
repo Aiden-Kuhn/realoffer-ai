@@ -56,6 +56,13 @@ describe("computeAnalysisInputHash", () => {
     expect(a).toBe(b);
   });
 
+  it("changes when bedrooms/bathrooms change (e.g. a manual correction is applied)", () => {
+    const { property, comparables, repairEstimate, assumptions } = makeStrongDealFixtures();
+    const before = computeAnalysisInputHash(property, comparables, repairEstimate, assumptions);
+    const after = computeAnalysisInputHash({ ...property, bedrooms: (property.bedrooms ?? 0) + 1 }, comparables, repairEstimate, assumptions);
+    expect(after).not.toBe(before);
+  });
+
   it("changes when the property's lastUpdated timestamp changes (e.g. after a refresh)", () => {
     const { property, comparables, repairEstimate, assumptions } = makeStrongDealFixtures();
     const before = computeAnalysisInputHash(property, comparables, repairEstimate, assumptions);

@@ -22,6 +22,7 @@ import { buildDealFinancialResults, resolveSelectedArvCents } from "@/lib/calcul
 import { computeRepairTotalCents } from "@/lib/calculations/repairs";
 import { computeDealRisks } from "@/lib/calculations/risks";
 import { hasSufficientPropertyInfo } from "@/lib/property/completeness";
+import { withEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import { analyzePropertyAddress } from "@/lib/property/providerSelection";
 import { describeProviderErrorCode } from "@/lib/property/errorMessages";
 import { PropertyHeader } from "@/components/analysis/PropertyHeader";
@@ -90,6 +91,8 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const [isCreatingContract, setIsCreatingContract] = useState(false);
 
   const [property, setProperty] = useState<PropertyRecord>(deal.property);
+  const [bedroomsOverride, setBedroomsOverride] = useState<number | null>(deal.bedroomsOverride ?? null);
+  const [bathroomsOverride, setBathroomsOverride] = useState<number | null>(deal.bathroomsOverride ?? null);
   const [assumptions, setAssumptions] = useState<DealAssumptions>(deal.assumptions);
   const [repairEstimate, setRepairEstimate] = useState<RepairEstimateState>(deal.repairEstimate);
   const [comparables, setComparables] = useState<ComparableSale[]>(deal.comparables);
@@ -132,11 +135,20 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const sufficientInfo = hasSufficientPropertyInfo(property);
   const risks = results ? computeDealRisks(property, comparables, results) : [];
 
+  // Reflects the user's bedroom/bathroom correction (if any) — used for
+  // every downstream investment calculation and narrative, never for the
+  // raw provenance display in PropertyHeader/PropertyOverview, which needs
+  // the untouched provider value plus the override separately.
+  const effectiveProperty = useMemo(
+    () => withEffectiveBedsBaths(property, bedroomsOverride, bathroomsOverride),
+    [property, bedroomsOverride, bathroomsOverride],
+  );
+
   const dealScore = useMemo(() => {
     if (!results) return null;
-    const context = buildInvestmentAnalysisContext(property, comparables, repairEstimate, assumptions, results);
+    const context = buildInvestmentAnalysisContext(effectiveProperty, comparables, repairEstimate, assumptions, results);
     return computeDealScore(context);
-  }, [property, comparables, repairEstimate, assumptions, results]);
+  }, [effectiveProperty, comparables, repairEstimate, assumptions, results]);
 
   async function handleSave() {
     if (!results) return;
@@ -153,6 +165,8 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
       results,
       investmentAnalysis,
       dataMode: property.source === "rentcast" ? "real" : "demo",
+      bedroomsOverride,
+      bathroomsOverride,
     };
     try {
       await dealRepository.save(toSave);
@@ -284,7 +298,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="flex flex-col gap-6 min-w-0">
-          <PropertyHeader property={property} status={status} />
+          <PropertyHeader property={property} status={status} bedroomsOverride={bedroomsOverride} bathroomsOverride={bathroomsOverride} />
           <DataSourceBanner source={property.source} />
 
           <div className="flex flex-wrap items-center justify-between gap-2 -mt-2">
@@ -303,7 +317,13 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
           </div>
           {refreshError ? <p className="text-xs text-red-400 -mt-3">{refreshError}</p> : null}
 
-          <PropertyOverview property={property} />
+          <PropertyOverview
+            property={property}
+            bedroomsOverride={bedroomsOverride}
+            bathroomsOverride={bathroomsOverride}
+            onChangeBedroomsOverride={setBedroomsOverride}
+            onChangeBathroomsOverride={setBathroomsOverride}
+          />
           <AssumptionsForm assumptions={assumptions} onChange={setAssumptions} />
           <ArvPanel
             property={property}
@@ -329,7 +349,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
           {results ? (
             <InvestmentAnalyst
               dealId={deal.id}
-              property={property}
+              property={effectiveProperty}
               comparables={comparables}
               repairEstimate={repairEstimate}
               assumptions={assumptions}

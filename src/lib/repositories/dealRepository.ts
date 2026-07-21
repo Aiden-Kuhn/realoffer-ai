@@ -33,6 +33,8 @@ function rowToDeal(row: DealRow): Deal {
     repairEstimate: row.repair_estimate,
     results: row.results,
     investmentAnalysis: row.investment_analysis ?? undefined,
+    bedroomsOverride: row.bedrooms_override,
+    bathroomsOverride: row.bathrooms_override,
   });
 }
 
@@ -90,6 +92,8 @@ export class SupabaseDealRepository implements DealRepository {
           repair_estimate: deal.repairEstimate,
           results: deal.results,
           investment_analysis: deal.investmentAnalysis ?? null,
+          bedrooms_override: deal.bedroomsOverride ?? null,
+          bathrooms_override: deal.bathroomsOverride ?? null,
         },
         { onConflict: "id" },
       )

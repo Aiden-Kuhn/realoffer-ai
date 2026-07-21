@@ -45,6 +45,11 @@ export type PropertySection = {
   /** Only ever set by explicit user entry — never inferred or guessed. */
   legalDescription: string;
   propertyType: string;
+  /** Prefilled from the deal's *effective* value (the user's correction, if
+   * any, else the provider's) — see lib/property/bedsBathsOverride.ts.
+   * Still a plain editable field here, like every other property field. */
+  bedrooms: number | null;
+  bathrooms: number | null;
   includedPersonalProperty: string;
   excludedItems: string;
 };

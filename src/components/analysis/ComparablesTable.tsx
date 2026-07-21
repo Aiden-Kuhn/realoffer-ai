@@ -83,7 +83,7 @@ export function ComparablesTable({ comparables, onChange }: ComparablesTableProp
                     {formatCents(comp.pricePerSqftCents, { showCents: true })}
                   </td>
                   <td className="py-2.5 pr-3 text-white/60 whitespace-nowrap">
-                    {comp.bedrooms}/{comp.bathrooms}
+                    {comp.bedrooms ?? "—"}/{comp.bathrooms ?? "—"}
                   </td>
                   <td className="py-2.5 pr-3 text-white/60 tabular-nums whitespace-nowrap">
                     {comp.similarityScore}

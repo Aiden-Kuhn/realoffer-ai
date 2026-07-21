@@ -74,6 +74,29 @@ describe("buildPrefillFromDeal — Buyer Profile prefill", () => {
   });
 });
 
+describe("buildPrefillFromDeal — bedrooms/bathrooms", () => {
+  it("prefills the provider's bedrooms/bathrooms when there is no correction", () => {
+    const deal = makeDeal();
+    const formData = buildPrefillFromDeal(deal, null);
+    expect(formData.property.bedrooms).toBe(deal.property.bedrooms);
+    expect(formData.property.bathrooms).toBe(deal.property.bathrooms);
+  });
+
+  it("prefills the user's corrected bedrooms/bathrooms instead of the provider's value — no re-entry required", () => {
+    const deal = makeDeal({ bedroomsOverride: 5, bathroomsOverride: 3.5 });
+    const formData = buildPrefillFromDeal(deal, null);
+    expect(formData.property.bedrooms).toBe(5);
+    expect(formData.property.bathrooms).toBe(3.5);
+  });
+
+  it("prefills a single corrected field while leaving the other on the provider's value", () => {
+    const deal = makeDeal({ bedroomsOverride: 6 });
+    const formData = buildPrefillFromDeal(deal, null);
+    expect(formData.property.bedrooms).toBe(6);
+    expect(formData.property.bathrooms).toBe(deal.property.bathrooms);
+  });
+});
+
 describe("buildPrefillFromDeal — Due Diligence defaults prefill", () => {
   it("leaves the due-diligence section entirely blank for a first-time user with no saved defaults", () => {
     const formData = buildPrefillFromDeal(makeDeal(), null, null);

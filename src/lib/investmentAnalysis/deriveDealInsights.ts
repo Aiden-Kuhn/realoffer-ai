@@ -2,6 +2,7 @@ import { buildInvestmentAnalysisContext } from "@/lib/investmentAnalysis/buildCo
 import { computeDealScore } from "@/lib/investmentAnalysis/dealScore";
 import { computeRecommendation } from "@/lib/investmentAnalysis/recommendation";
 import { computeAnalysisInputHash } from "@/lib/investmentAnalysis/inputHash";
+import { withEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { DeterministicRecommendation, RealOfferDealScore } from "@/lib/investmentAnalysis/types";
 import type { Deal } from "@/types/deal";
 
@@ -21,12 +22,13 @@ export type DealInsights = {
  * whether or not the user ever clicked Generate Analysis on it.
  */
 export function deriveDealInsights(deal: Deal): DealInsights {
-  const context = buildInvestmentAnalysisContext(deal.property, deal.comparables, deal.repairEstimate, deal.assumptions, deal.results);
+  const property = withEffectiveBedsBaths(deal.property, deal.bedroomsOverride, deal.bathroomsOverride);
+  const context = buildInvestmentAnalysisContext(property, deal.comparables, deal.repairEstimate, deal.assumptions, deal.results);
   const dealScore = computeDealScore(context);
   const recommendation = computeRecommendation(context);
 
   const hasAnalysis = deal.investmentAnalysis != null;
-  const isStale = hasAnalysis && deal.investmentAnalysis!.inputHash !== computeAnalysisInputHash(deal.property, deal.comparables, deal.repairEstimate, deal.assumptions);
+  const isStale = hasAnalysis && deal.investmentAnalysis!.inputHash !== computeAnalysisInputHash(property, deal.comparables, deal.repairEstimate, deal.assumptions);
 
   return { dealScore, recommendation, hasAnalysis, isStale };
 }

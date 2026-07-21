@@ -84,6 +84,8 @@ export function ContractDocument({ formData, templateLabel, templateVersion, dis
           <Row label="County" value={p.county} />
           <Row label="Parcel / APN" value={p.parcelNumber} />
           <Row label="Property type" value={p.propertyType} />
+          <Row label="Bedrooms" value={p.bedrooms !== null ? String(p.bedrooms) : ""} />
+          <Row label="Bathrooms" value={p.bathrooms !== null ? String(p.bathrooms) : ""} />
           <Row label="Legal description" value={p.legalDescription} />
           <Row label="Included personal property" value={p.includedPersonalProperty} />
           <Row label="Excluded items" value={p.excludedItems} />

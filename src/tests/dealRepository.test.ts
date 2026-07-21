@@ -130,6 +130,47 @@ describe("SupabaseDealRepository", () => {
     await expect(dealRepository.delete("any-id")).rejects.toThrow(DealStorageError);
   });
 
+  it("saves and reloads a deal with a bedroom/bathroom override intact", async () => {
+    const { dealRepository } = await import("@/lib/repositories/dealRepository");
+    const deal = makeDeal({ id: "deal-override", bedroomsOverride: 4, bathroomsOverride: 2.5 });
+    await dealRepository.save(deal);
+
+    const reloaded = await dealRepository.get("deal-override");
+    expect(reloaded?.bedroomsOverride).toBe(4);
+    expect(reloaded?.bathroomsOverride).toBe(2.5);
+  });
+
+  it("removing an override persists as null rather than leaving the old value", async () => {
+    const { dealRepository } = await import("@/lib/repositories/dealRepository");
+    const deal = makeDeal({ id: "deal-remove-override", bedroomsOverride: 5, bathroomsOverride: 3 });
+    await dealRepository.save(deal);
+    await dealRepository.save({ ...deal, bedroomsOverride: null, bathroomsOverride: null });
+
+    const reloaded = await dealRepository.get("deal-remove-override");
+    expect(reloaded?.bedroomsOverride).toBeNull();
+    expect(reloaded?.bathroomsOverride).toBeNull();
+  });
+
+  it("loads a deal saved before overrides existed with both fields null", async () => {
+    const { dealRepository } = await import("@/lib/repositories/dealRepository");
+    const deal = makeDeal({ id: "deal-no-override" });
+    await dealRepository.save(deal);
+
+    const reloaded = await dealRepository.get("deal-no-override");
+    expect(reloaded?.bedroomsOverride).toBeNull();
+    expect(reloaded?.bathroomsOverride).toBeNull();
+  });
+
+  it("does not expose another user's saved deal or its bedroom/bathroom override", async () => {
+    const { dealRepository } = await import("@/lib/repositories/dealRepository");
+    const deal = makeDeal({ id: "deal-cross-user", bedroomsOverride: 4 });
+    await dealRepository.save(deal);
+
+    mockClient.__setSession({ user: { id: "user-2" } });
+    expect(await dealRepository.list()).toHaveLength(0);
+    expect(await dealRepository.get("deal-cross-user")).toBeNull();
+  });
+
   it("search/filterByStatus/sort still operate purely on an in-memory array (no network)", async () => {
     const { dealRepository } = await import("@/lib/repositories/dealRepository");
     const deals = [

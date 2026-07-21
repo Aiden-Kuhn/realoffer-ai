@@ -83,6 +83,14 @@ describe("ContractDocument PDF generation", () => {
     expect(isValidPdf(buffer)).toBe(true);
   });
 
+  it("renders bedrooms/bathrooms (including a decimal bathroom count) without throwing", async () => {
+    const data = completeFormData();
+    data.property.bedrooms = 3;
+    data.property.bathrooms = 2.5;
+    const buffer = await renderToBuffer(ContractDocument({ ...BASE_PROPS, formData: data }));
+    expect(isValidPdf(buffer)).toBe(true);
+  });
+
   it("renders with no jurisdiction selected without throwing", async () => {
     const buffer = await renderToBuffer(ContractDocument({ ...BASE_PROPS, jurisdictionState: null, formData: completeFormData() }));
     expect(isValidPdf(buffer)).toBe(true);

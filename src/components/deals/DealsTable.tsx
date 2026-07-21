@@ -4,6 +4,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SourceBadge } from "@/components/shared/SourceBadge";
 import { DealScoreBadge } from "@/components/shared/DealScoreBadge";
 import { deriveDealInsights } from "@/lib/investmentAnalysis/deriveDealInsights";
+import { formatBedsBaths } from "@/lib/property/labels";
+import { resolveEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { Deal } from "@/types/deal";
 
 export function DealsTable({ deals, onDeleteRequest }: { deals: Deal[]; onDeleteRequest: (id: string) => void }) {
@@ -29,6 +31,8 @@ export function DealsTable({ deals, onDeleteRequest }: { deals: Deal[]; onDelete
           {deals.map((deal) => {
             const arv = deal.assumptions.arvOverrideCents ?? deal.property.arvExpectedCents;
             const insights = deriveDealInsights(deal);
+            const effective = resolveEffectiveBedsBaths(deal);
+            const bedsBaths = formatBedsBaths(effective.bedrooms, effective.bathrooms);
             return (
               <tr key={deal.id} className="border-b border-border/60 last:border-0 transition-colors duration-150 hover:bg-white/[0.02]">
                 <td className="py-3 px-4 whitespace-nowrap">
@@ -38,7 +42,10 @@ export function DealsTable({ deals, onDeleteRequest }: { deals: Deal[]; onDelete
                     </Link>
                     <SourceBadge kind={deal.dataMode === "real" ? "provider_record" : "demo"} />
                   </div>
-                  <p className="text-xs text-muted mt-0.5">{deal.property.address.city}, {deal.property.address.state}</p>
+                  <p className="text-xs text-muted mt-0.5">
+                    {deal.property.address.city}, {deal.property.address.state}
+                    {bedsBaths ? ` · ${bedsBaths}` : ""}
+                  </p>
                 </td>
                 <td className="py-3 px-4 text-white/60 whitespace-nowrap">
                   {new Date(deal.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}

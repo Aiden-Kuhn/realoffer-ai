@@ -130,6 +130,24 @@ describe("normalizeLegacyDeal", () => {
     expect(migrated.dataMode).toBe("real");
   });
 
+  it("backfills bedroomsOverride/bathroomsOverride as null for a deal saved before this field existed", () => {
+    const migrated = normalizeLegacyDeal(legacyDealJson);
+    expect(migrated.bedroomsOverride).toBeNull();
+    expect(migrated.bathroomsOverride).toBeNull();
+  });
+
+  it("preserves an existing bedroomsOverride/bathroomsOverride, including a decimal bathroom override", () => {
+    const migrated = normalizeLegacyDeal({ ...legacyDealJson, bedroomsOverride: 4, bathroomsOverride: 2.5 });
+    expect(migrated.bedroomsOverride).toBe(4);
+    expect(migrated.bathroomsOverride).toBe(2.5);
+  });
+
+  it("discards a corrupted (non-numeric) bedroomsOverride/bathroomsOverride rather than crashing", () => {
+    const migrated = normalizeLegacyDeal({ ...legacyDealJson, bedroomsOverride: "three", bathroomsOverride: {} });
+    expect(migrated.bedroomsOverride).toBeNull();
+    expect(migrated.bathroomsOverride).toBeNull();
+  });
+
   it("does not throw on a record missing assumptions, results, and repairEstimate entirely", () => {
     const partial = { ...legacyDealJson, assumptions: undefined, results: undefined, repairEstimate: undefined };
     expect(() => normalizeLegacyDeal(partial)).not.toThrow();

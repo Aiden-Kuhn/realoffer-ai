@@ -270,6 +270,31 @@ describe("normalizeComparables", () => {
     expect(normalizeComparables(undefined, subject)).toEqual([]);
     expect(normalizeComparables([], subject)).toEqual([]);
   });
+
+  it("preserves a comp's own bedrooms/bathrooms when the provider reports them", () => {
+    const comps = normalizeComparables(rawComps, subject);
+    const comp1 = comps.find((c) => c.id === "comp-1")!;
+    expect(comp1.bedrooms).toBe(3);
+    expect(comp1.bathrooms).toBe(2);
+  });
+
+  it("leaves bedrooms/bathrooms null when the provider doesn't report them for a comp — never a fabricated 0 or borrowed subject value", () => {
+    const noBedBath: RentCastComparable[] = [
+      { id: "comp-nobb", formattedAddress: "No Bed Bath St", squareFootage: 1600, price: 300000, distance: 0.4 },
+    ];
+    const comps = normalizeComparables(noBedBath, subject);
+    expect(comps[0].bedrooms).toBeNull();
+    expect(comps[0].bathrooms).toBeNull();
+  });
+
+  it("still computes a valid similarity score for a comp missing bedrooms/bathrooms", () => {
+    const noBedBath: RentCastComparable[] = [
+      { id: "comp-nobb", formattedAddress: "No Bed Bath St", squareFootage: 1600, price: 300000, distance: 0.4 },
+    ];
+    const comps = normalizeComparables(noBedBath, subject);
+    expect(comps[0].similarityScore).toBeGreaterThanOrEqual(0);
+    expect(comps[0].similarityScore).toBeLessThanOrEqual(100);
+  });
 });
 
 describe("ARV suggestion from real RentCast comparables", () => {

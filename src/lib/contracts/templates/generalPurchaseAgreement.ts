@@ -1,6 +1,7 @@
 import { PROPERTY_TYPE_LABELS } from "@/lib/property/labels";
 import { emptyParty, type ContractFormData, type PartyInfo } from "@/lib/contracts/types";
 import { calculateInspectionDeadline } from "@/lib/contracts/inspectionDeadline";
+import { resolveEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { DueDiligenceDefaultsValues } from "@/lib/contractDefaults/types";
 import type { Deal } from "@/types/deal";
 
@@ -36,6 +37,8 @@ export function emptyContractFormData(): ContractFormData {
       parcelNumber: "",
       legalDescription: "",
       propertyType: "",
+      bedrooms: null,
+      bathrooms: null,
       includedPersonalProperty: "",
       excludedItems: "",
     },
@@ -84,7 +87,10 @@ export function emptyContractFormData(): ContractFormData {
 
 /**
  * Prefills only the fields RealOffer AI actually trusts — property address/
- * type/county from the analyzed deal, buyer identity/contact from the
+ * type/county/bedrooms/bathrooms from the analyzed deal (bedrooms/bathrooms
+ * use the deal's *effective* value — the user's correction if one exists,
+ * else the provider's, see lib/property/bedsBathsOverride.ts — so a
+ * correction never has to be re-entered here), buyer identity/contact from the
  * user's saved Buyer Profile (see lib/buyerProfile/), and the purchase
  * price ONLY as a suggestion (never silently confirmed —
  * purchasePriceSource records which figure was offered, but the builder
@@ -123,6 +129,9 @@ export function buildPrefillFromDeal(deal: Deal, buyerProfile: PartyInfo | null,
   base.property.zip = deal.property.address.zip;
   base.property.county = deal.property.county ?? "";
   base.property.propertyType = PROPERTY_TYPE_LABELS[deal.property.propertyType];
+  const effectiveBedsBaths = resolveEffectiveBedsBaths(deal);
+  base.property.bedrooms = effectiveBedsBaths.bedrooms;
+  base.property.bathrooms = effectiveBedsBaths.bathrooms;
 
   if (buyerProfile) {
     base.buyer.legalName = buyerProfile.legalName;

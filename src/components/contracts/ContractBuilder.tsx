@@ -18,6 +18,7 @@ import { getTemplateMeta } from "@/lib/contracts/templates/index";
 import { US_STATES, stateNameForCode } from "@/lib/contracts/usStates";
 import { buildInvestmentAnalysisContext } from "@/lib/investmentAnalysis/buildContext";
 import { computeOfferGuidance } from "@/lib/investmentAnalysis/offerGuidance";
+import { withEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { ContractFormData, PartyInfo, AssignmentSection as AssignmentSectionData } from "@/lib/contracts/types";
 import type { DueDiligenceDefaultsValues } from "@/lib/contractDefaults/types";
 import { PropertyStep } from "@/components/contracts/PropertyStep";
@@ -131,7 +132,8 @@ function ContractBuilderContent({ contract }: { contract: NonNullable<ReturnType
   const offerGuidance = useMemo(() => {
     if (!deal) return null;
     try {
-      const context = buildInvestmentAnalysisContext(deal.property, deal.comparables, deal.repairEstimate, deal.assumptions, deal.results);
+      const property = withEffectiveBedsBaths(deal.property, deal.bedroomsOverride, deal.bathroomsOverride);
+      const context = buildInvestmentAnalysisContext(property, deal.comparables, deal.repairEstimate, deal.assumptions, deal.results);
       return computeOfferGuidance(context);
     } catch {
       // Deal data doesn't currently support a valid calculation (e.g. an

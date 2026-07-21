@@ -166,8 +166,12 @@ export function normalizeComparables(raw: RentCastComparable[] | undefined, subj
         distanceMiles: Math.round((c.distance as number) * 10) / 10,
         squareFootage,
         pricePerSqftCents,
-        bedrooms: c.bedrooms ?? subject.bedrooms ?? 0,
-        bathrooms: c.bathrooms ?? subject.bathrooms ?? 0,
+        // Preserves true unknown-ness for display — never a fabricated 0 or
+        // a value silently borrowed from the subject property. The score
+        // calculation below still uses a same-as-subject fallback for its
+        // internal math (bounded delta, not a displayed fact).
+        bedrooms: c.bedrooms ?? null,
+        bathrooms: c.bathrooms ?? null,
         similarityScore:
           similarityScore ??
           calculateRealOfferSimilarityScore({

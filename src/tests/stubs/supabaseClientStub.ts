@@ -76,17 +76,32 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
         },
         async maybeSingle(): Promise<Result<Row | null>> {
           if (fails(name, "select")) return { data: null, error: new Error(`mock select failure on ${name}`) };
-          const rows = table(name);
+          let rows = table(name);
+          rows = applyRlsSelectFilter(rows);
           const match = eqFilters.length > 0 ? rows.find((r) => eqFilters.every(([c, v]) => r[c] === v)) : (rows[0] ?? null);
           return { data: match ?? null, error: null };
         },
       };
+
+      // Mirrors real Postgres RLS on `deals` ("select own deals" — auth.uid()
+      // = user_id): rows outside the current session are simply invisible
+      // to select/list, even though application code never adds its own
+      // `.eq("user_id", ...)` filter (it relies on RLS the same way the real
+      // Supabase client does). Scoped to `deals` only — other tables in this
+      // stub have their own ownership modeling (e.g. contractRlsAllows) or
+      // don't need it for the tests that exist today.
+      function applyRlsSelectFilter(rows: Row[]): Row[] {
+        if (name !== "deals") return rows;
+        if (!session) return [];
+        return rows.filter((r) => r.user_id === session!.user.id);
+      }
 
       function awaitableList(orderCol: string, ascending: boolean) {
         return {
           then<TResult>(onfulfilled: (value: Result<Row[]>) => TResult) {
             if (fails(name, "select")) return onfulfilled({ data: [], error: new Error(`mock select failure on ${name}`) });
             let rows = table(name);
+            rows = applyRlsSelectFilter(rows);
             if (eqFilters.length > 0) rows = rows.filter((r) => eqFilters.every(([c, v]) => r[c] === v));
             rows = [...rows].sort((a, b) => {
               const av = String(a[orderCol]);

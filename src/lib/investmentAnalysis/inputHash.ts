@@ -30,6 +30,8 @@ export function computeAnalysisInputHash(
     v: ANALYSIS_VERSION,
     address: property.address.formatted,
     propertyUpdatedAt: property.lastUpdated,
+    bedrooms: property.bedrooms,
+    bathrooms: property.bathrooms,
     arv: assumptions.arvOverrideCents ?? property.arvExpectedCents,
     arvOverridden: assumptions.arvOverrideCents !== null,
     repairMode: repairEstimate.mode,

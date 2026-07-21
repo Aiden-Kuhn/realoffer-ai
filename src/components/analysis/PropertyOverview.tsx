@@ -2,6 +2,8 @@ import { BedDouble, Bath, Home, Ruler, CalendarDays, LandPlot, Tag, Clock3, Rece
 import { formatCents } from "@/lib/calculations/money";
 import { SourceBadge, type SourceBadgeKind } from "@/components/shared/SourceBadge";
 import { PROPERTY_TYPE_LABELS } from "@/lib/property/labels";
+import { resolveEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
+import { BedsBathsEditor } from "@/components/property/BedsBathsEditor";
 import type { PropertyRecord } from "@/lib/property/types";
 
 type FactCard = { icon: LucideIcon; label: string; value: string; badge: SourceBadgeKind; title?: string };
@@ -25,10 +27,10 @@ function field(present: boolean, value: string, badgeWhenPresent: SourceBadgeKin
   return { value: "Not available", badge: "unavailable", title: unavailableTitle(isReal) };
 }
 
-function buildQuickFacts(property: PropertyRecord): QuickFacts {
+function buildQuickFacts(property: PropertyRecord, bedrooms: number | null, bathrooms: number | null): QuickFacts {
   const statsParts: string[] = [];
-  if (property.bedrooms !== null) statsParts.push(`${property.bedrooms} ${property.bedrooms === 1 ? "Bed" : "Beds"}`);
-  if (property.bathrooms !== null) statsParts.push(`${property.bathrooms} ${property.bathrooms === 1 ? "Bath" : "Baths"}`);
+  if (bedrooms !== null) statsParts.push(`${bedrooms} ${bedrooms === 1 ? "Bed" : "Beds"}`);
+  if (bathrooms !== null) statsParts.push(`${bathrooms} ${bathrooms === 1 ? "Bath" : "Baths"}`);
   if (property.squareFootage !== null) statsParts.push(`${property.squareFootage.toLocaleString()} sqft`);
 
   const metaParts: string[] = [];
@@ -43,12 +45,30 @@ function buildQuickFacts(property: PropertyRecord): QuickFacts {
   };
 }
 
-function buildKeyFacts(property: PropertyRecord): FactCard[] {
+function buildKeyFacts(
+  property: PropertyRecord,
+  bedrooms: number | null,
+  bathrooms: number | null,
+  bedroomsIsOverridden: boolean,
+  bathroomsIsOverridden: boolean,
+): FactCard[] {
   const isReal = property.source === "rentcast";
 
   return [
-    { icon: BedDouble, label: "Bedrooms", ...field(property.bedrooms !== null, String(property.bedrooms), "provider_record", isReal) },
-    { icon: Bath, label: "Bathrooms", ...field(property.bathrooms !== null, String(property.bathrooms), "provider_record", isReal) },
+    {
+      icon: BedDouble,
+      label: "Bedrooms",
+      ...(bedroomsIsOverridden
+        ? { value: String(bedrooms), badge: "user_entered" as const, title: "Manually corrected — overrides RentCast's value." }
+        : field(bedrooms !== null, String(bedrooms), "provider_record", isReal)),
+    },
+    {
+      icon: Bath,
+      label: "Bathrooms",
+      ...(bathroomsIsOverridden
+        ? { value: String(bathrooms), badge: "user_entered" as const, title: "Manually corrected — overrides RentCast's value." }
+        : field(bathrooms !== null, String(bathrooms), "provider_record", isReal)),
+    },
     {
       icon: Home,
       label: "Property type",
@@ -126,10 +146,26 @@ function buildAdditionalDetails(property: PropertyRecord): DetailRow[] {
   ];
 }
 
-export function PropertyOverview({ property }: { property: PropertyRecord }) {
-  const keyFacts = buildKeyFacts(property);
+type PropertyOverviewProps = {
+  property: PropertyRecord;
+  bedroomsOverride?: number | null;
+  bathroomsOverride?: number | null;
+  onChangeBedroomsOverride?: (value: number | null) => void;
+  onChangeBathroomsOverride?: (value: number | null) => void;
+};
+
+export function PropertyOverview({
+  property,
+  bedroomsOverride = null,
+  bathroomsOverride = null,
+  onChangeBedroomsOverride,
+  onChangeBathroomsOverride,
+}: PropertyOverviewProps) {
+  const effective = resolveEffectiveBedsBaths({ property, bedroomsOverride, bathroomsOverride });
+  const keyFacts = buildKeyFacts(property, effective.bedrooms, effective.bathrooms, effective.bedroomsIsOverridden, effective.bathroomsIsOverridden);
   const details = buildAdditionalDetails(property);
-  const quickFacts = buildQuickFacts(property);
+  const quickFacts = buildQuickFacts(property, effective.bedrooms, effective.bathrooms);
+  const canEditBedsBaths = onChangeBedroomsOverride !== undefined && onChangeBathroomsOverride !== undefined;
 
   return (
     <section className="rounded-2xl border border-border bg-surface p-6">
@@ -138,8 +174,26 @@ export function PropertyOverview({ property }: { property: PropertyRecord }) {
 
       <div className="mb-6">
         <p className="text-base font-semibold tracking-tight text-white">{quickFacts.typeLabel}</p>
-        {quickFacts.statsLine ? <p className="mt-1 text-sm text-white/70">{quickFacts.statsLine}</p> : null}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {quickFacts.statsLine ? <p className="text-sm text-white/70">{quickFacts.statsLine}</p> : null}
+          {effective.bedroomsIsOverridden || effective.bathroomsIsOverridden ? (
+            <span className="text-[11px] font-medium text-accent-3">Manually corrected</span>
+          ) : null}
+          {canEditBedsBaths ? (
+            <BedsBathsEditor
+              providerBedrooms={property.bedrooms}
+              providerBathrooms={property.bathrooms}
+              bedroomsOverride={bedroomsOverride}
+              bathroomsOverride={bathroomsOverride}
+              onChangeBedroomsOverride={onChangeBedroomsOverride!}
+              onChangeBathroomsOverride={onChangeBathroomsOverride!}
+            />
+          ) : null}
+        </div>
         {quickFacts.metaLine ? <p className="mt-1 text-sm text-muted">{quickFacts.metaLine}</p> : null}
+        {property.source === "rentcast" ? (
+          <p className="mt-1.5 text-xs text-white/35">Property data from RentCast — may differ from other sources.</p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 auto-rows-fr gap-2.5 sm:gap-3 mb-6">

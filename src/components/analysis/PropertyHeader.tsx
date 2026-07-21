@@ -3,9 +3,19 @@ import type { PropertyRecord } from "@/lib/property/types";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SourceBadge } from "@/components/shared/SourceBadge";
 import { PROPERTY_TYPE_LABELS, CONFIDENCE_LABELS } from "@/lib/property/labels";
+import { resolveEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { DealPipelineStatus } from "@/types/deal";
 
-export function PropertyHeader({ property, status }: { property: PropertyRecord; status: DealPipelineStatus }) {
+type PropertyHeaderProps = {
+  property: PropertyRecord;
+  status: DealPipelineStatus;
+  bedroomsOverride?: number | null;
+  bathroomsOverride?: number | null;
+};
+
+export function PropertyHeader({ property, status, bedroomsOverride = null, bathroomsOverride = null }: PropertyHeaderProps) {
+  const effective = resolveEffectiveBedsBaths({ property, bedroomsOverride, bathroomsOverride });
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -27,11 +37,17 @@ export function PropertyHeader({ property, status }: { property: PropertyRecord;
         <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">
           {PROPERTY_TYPE_LABELS[property.propertyType]}
         </span>
-        {property.bedrooms !== null ? (
-          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">{property.bedrooms} bd</span>
+        {effective.bedrooms !== null ? (
+          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">
+            {effective.bedrooms} bd
+            {effective.bedroomsIsOverridden ? <span className="ml-1 text-accent-3">•</span> : null}
+          </span>
         ) : null}
-        {property.bathrooms !== null ? (
-          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">{property.bathrooms} ba</span>
+        {effective.bathrooms !== null ? (
+          <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">
+            {effective.bathrooms} ba
+            {effective.bathroomsIsOverridden ? <span className="ml-1 text-accent-3">•</span> : null}
+          </span>
         ) : null}
         {property.squareFootage !== null ? (
           <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-white/60">

@@ -4,12 +4,16 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { SourceBadge } from "@/components/shared/SourceBadge";
 import { DealScoreBadge } from "@/components/shared/DealScoreBadge";
 import { deriveDealInsights } from "@/lib/investmentAnalysis/deriveDealInsights";
+import { formatBedsBaths } from "@/lib/property/labels";
+import { resolveEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
 import type { Deal } from "@/types/deal";
 
 export function DealCard({ deal, onDeleteRequest }: { deal: Deal; onDeleteRequest: (id: string) => void }) {
   const arv = deal.assumptions.arvOverrideCents ?? deal.property.arvExpectedCents;
   const isProfitNegative = deal.results.projectedInvestorProfitCents < 0;
   const insights = deriveDealInsights(deal);
+  const effective = resolveEffectiveBedsBaths(deal);
+  const bedsBaths = formatBedsBaths(effective.bedrooms, effective.bathrooms);
 
   return (
     <div className="rounded-2xl border border-border bg-surface p-4 transition-colors duration-200 hover:border-border-strong">
@@ -22,7 +26,8 @@ export function DealCard({ deal, onDeleteRequest }: { deal: Deal; onDeleteReques
             <SourceBadge kind={deal.dataMode === "real" ? "provider_record" : "demo"} />
           </div>
           <p className="text-xs text-muted mt-0.5">
-            {deal.property.address.city}, {deal.property.address.state} ·{" "}
+            {deal.property.address.city}, {deal.property.address.state}
+            {bedsBaths ? ` · ${bedsBaths}` : ""} ·{" "}
             {new Date(deal.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </p>
         </div>

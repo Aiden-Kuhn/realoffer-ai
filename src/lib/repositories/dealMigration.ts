@@ -72,7 +72,17 @@ export function normalizeLegacyDeal(raw: unknown): Deal {
     results: deal.results ?? fallbackResults(),
     dataMode: deal.dataMode ?? (property.source === "rentcast" ? "real" : "demo"),
     investmentAnalysis: normalizeLegacyInvestmentAnalysis(deal.investmentAnalysis),
+    bedroomsOverride: normalizeOverrideNumber(deal.bedroomsOverride),
+    bathroomsOverride: normalizeOverrideNumber(deal.bathroomsOverride),
   };
+}
+
+/** A deal saved before this field existed simply lacks it — `undefined`
+ * there means "no correction," identical to an explicit `null`. Anything
+ * that isn't a finite number (corrupted storage) also degrades to "no
+ * correction" rather than crashing or displaying garbage. */
+function normalizeOverrideNumber(raw: unknown): number | null {
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
 }
 
 /** `investmentAnalysis` is optional-at-rest and its absence is meaningful

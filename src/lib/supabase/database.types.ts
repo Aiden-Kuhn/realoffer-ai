@@ -23,6 +23,8 @@ export type Database = {
           repair_estimate: unknown;
           results: unknown;
           investment_analysis: unknown | null;
+          bedrooms_override: number | null;
+          bathrooms_override: number | null;
         };
         Insert: {
           id?: string;
@@ -39,6 +41,8 @@ export type Database = {
           repair_estimate: unknown;
           results: unknown;
           investment_analysis?: unknown | null;
+          bedrooms_override?: number | null;
+          bathrooms_override?: number | null;
         };
         Update: {
           id?: string;
@@ -55,6 +59,8 @@ export type Database = {
           repair_estimate?: unknown;
           results?: unknown;
           investment_analysis?: unknown | null;
+          bedrooms_override?: number | null;
+          bathrooms_override?: number | null;
         };
       };
       user_settings: {

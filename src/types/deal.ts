@@ -62,4 +62,12 @@ export type Deal = {
    * for any deal that hasn't had an analysis generated yet — both render
    * as "Generate Analysis" rather than an error. See lib/investmentAnalysis. */
   investmentAnalysis?: InvestmentAnalysisResult;
+  /** A user-entered correction to the provider's (RentCast/demo) bedroom or
+   * bathroom count for this specific deal — kept fully separate from
+   * `property.bedrooms`/`bathrooms`, which is never overwritten. `null`/
+   * absent means "use the provider value." See lib/property/bedsBathsOverride.ts
+   * for how every consumer (display, investment calculations, contracts)
+   * resolves the effective value from this + `property`. */
+  bedroomsOverride?: number | null;
+  bathroomsOverride?: number | null;
 };

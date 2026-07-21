@@ -6,6 +6,7 @@ import type { ContractFormData } from "@/lib/contracts/types";
 
 export function PropertyStep() {
   const { register } = useFormContext<ContractFormData>();
+  const numberOrNull = { setValueAs: (v: string) => (v === "" ? null : Number(v)) };
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,6 +36,26 @@ export function PropertyStep() {
         </Field>
         <Field label="Property type" htmlFor="property.propertyType">
           <input id="property.propertyType" className={inputClasses} {...register("property.propertyType")} />
+        </Field>
+        <Field label="Bedrooms" htmlFor="property.bedrooms" hint="Prefilled from the analyzed property, including any manual correction you saved there">
+          <input
+            id="property.bedrooms"
+            type="number"
+            min={0}
+            step={1}
+            className={inputClasses}
+            {...register("property.bedrooms", numberOrNull)}
+          />
+        </Field>
+        <Field label="Bathrooms" htmlFor="property.bathrooms" hint="Prefilled from the analyzed property, including any manual correction you saved there">
+          <input
+            id="property.bathrooms"
+            type="number"
+            min={0}
+            step={0.5}
+            className={inputClasses}
+            {...register("property.bathrooms", numberOrNull)}
+          />
         </Field>
       </div>
 

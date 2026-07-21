@@ -70,6 +70,8 @@ export function ReviewStep({ formData, contractId, contractStatus, issues, warni
           <ReviewRow label="County" value={dash(formData.property.county)} />
           <ReviewRow label="Parcel #" value={dash(formData.property.parcelNumber)} />
           <ReviewRow label="Property type" value={dash(formData.property.propertyType)} />
+          <ReviewRow label="Bedrooms" value={dash(formData.property.bedrooms !== null ? String(formData.property.bedrooms) : null)} />
+          <ReviewRow label="Bathrooms" value={dash(formData.property.bathrooms !== null ? String(formData.property.bathrooms) : null)} />
           <ReviewRow label="Legal description" value={dash(formData.property.legalDescription)} />
         </ReviewSection>
 

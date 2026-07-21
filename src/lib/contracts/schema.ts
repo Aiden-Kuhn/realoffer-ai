@@ -41,6 +41,9 @@ const partySchema = z.object({
   phone: shortText,
 });
 
+const propertyBedroomsOrNull = z.number().int().min(0).max(20).nullable().default(null);
+const propertyBathroomsOrNull = z.number().min(0).max(20).nullable().default(null);
+
 const propertySectionSchema = z.object({
   addressLine1: addressText,
   city: shortText,
@@ -50,6 +53,8 @@ const propertySectionSchema = z.object({
   parcelNumber: shortText,
   legalDescription: longText,
   propertyType: shortText,
+  bedrooms: propertyBedroomsOrNull,
+  bathrooms: propertyBathroomsOrNull,
   includedPersonalProperty: longText,
   excludedItems: longText,
 });
