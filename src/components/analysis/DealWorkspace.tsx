@@ -9,7 +9,8 @@ import { useMounted } from "@/hooks/useMounted";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDeal } from "@/hooks/useDeal";
 import { dealRepository } from "@/lib/repositories/dealRepository";
-import { settingsRepository } from "@/lib/repositories/settingsRepository";
+import { buyerProfileRepository } from "@/lib/repositories/buyerProfileRepository";
+import { contractDefaultsRepository } from "@/lib/repositories/contractDefaultsRepository";
 import { contractRepository } from "@/lib/repositories/contractRepository";
 import {
   buildPrefillFromDeal,
@@ -179,9 +180,15 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     setActionError(null);
     setIsCreatingContract(true);
     try {
-      const buyerProfile = await settingsRepository.get();
-      const formData = buildPrefillFromDeal(deal, buyerProfile);
-      if (user?.email) formData.buyer.email = user.email;
+      const [buyerProfile, dueDiligenceDefaults] = await Promise.all([
+        buyerProfileRepository.get(),
+        contractDefaultsRepository.getDueDiligenceDefaults(),
+      ]);
+      const formData = buildPrefillFromDeal(deal, buyerProfile, dueDiligenceDefaults?.values ?? null);
+      // Fall back to the login email only when the saved profile didn't
+      // already supply one — a user may deliberately want a different
+      // contact email on contracts than the one they sign in with.
+      if (user?.email && !formData.buyer.email) formData.buyer.email = user.email;
       const contract = await contractRepository.create({
         dealId: deal.id,
         templateId: GENERAL_PURCHASE_AGREEMENT_TEMPLATE_ID,

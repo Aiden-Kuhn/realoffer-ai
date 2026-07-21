@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useFieldArray, useFormContext, type Path } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, Trash2, Check, AlertTriangle, Loader2, Save, UserCircle2 } from "lucide-react";
 import { Field, inputClasses } from "@/components/shared/Field";
-import { emptyParty, type ContractFormData } from "@/lib/contracts/types";
+import { emptyParty, type ContractFormData, type PartyInfo } from "@/lib/contracts/types";
+import type { BuyerProfile } from "@/lib/buyerProfile/types";
 
 function PartyFields({ prefix, legend }: { prefix: "buyer" | "seller" | `additionalBuyers.${number}` | `additionalSellers.${number}`; legend: string }) {
   const { register } = useFormContext<ContractFormData>();
@@ -74,16 +77,86 @@ function AdditionalParties({ name, label }: { name: "additionalBuyers" | "additi
   );
 }
 
-export function PartiesStep() {
+type SaveProfileState = "idle" | "saving" | "saved" | "error";
+
+function SaveToProfileControl({ onSaveBuyerProfile }: { onSaveBuyerProfile: (party: PartyInfo) => Promise<void> }) {
+  const { getValues } = useFormContext<ContractFormData>();
+  const [state, setState] = useState<SaveProfileState>("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (state === "saving") return; // guards against duplicate submits
+    const buyer = getValues("buyer");
+    if (!buyer.legalName.trim()) {
+      setState("error");
+      setError("Enter a legal name before saving this as your Buyer Profile.");
+      return;
+    }
+    setState("saving");
+    setError(null);
+    try {
+      await onSaveBuyerProfile(buyer);
+      setState("saved");
+      window.setTimeout(() => setState((s) => (s === "saved" ? "idle" : s)), 2500);
+    } catch (err) {
+      setState("error");
+      setError(err instanceof Error ? err.message : "Couldn't save your Buyer Profile. Please try again.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={state === "saving"}
+        className="inline-flex items-center gap-1.5 self-start h-9 rounded-full border border-border px-3.5 text-xs font-medium text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
+      >
+        {state === "saving" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : state === "saved" ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Save className="h-3.5 w-3.5" />}
+        {state === "saving" ? "Saving to profile…" : state === "saved" ? "Saved to your profile" : "Save these buyer details to my profile for future contracts"}
+      </button>
+      {state === "error" && error ? (
+        <p role="alert" className="flex items-start gap-1.5 text-xs text-red-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function PartiesStep({
+  buyerProfile,
+  onSaveBuyerProfile,
+}: {
+  buyerProfile: BuyerProfile | null;
+  onSaveBuyerProfile: (party: PartyInfo) => Promise<void>;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-sm font-semibold text-white mb-1">Parties</h2>
-        <p className="text-xs text-muted">Buyer details are prefilled from your account profile where saved. Seller information is never guessed — enter it directly.</p>
+        <p className="text-xs text-muted">Buyer details are prefilled from your Buyer Profile where saved. Seller information is never guessed — enter it directly.</p>
       </div>
+
+      {buyerProfile ? (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted">
+          <UserCircle2 className="h-4 w-4 shrink-0 text-accent-3" />
+          <span>Prefilled from your Buyer Profile.</span>
+          <Link href="/dashboard/settings" target="_blank" rel="noopener noreferrer" className="text-white/70 hover:text-white underline underline-offset-2 transition-colors">
+            Edit Buyer Profile
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-accent-3/25 bg-accent-3/[0.06] px-4 py-3 text-xs text-white/80 leading-relaxed">
+          Complete your Buyer Profile once to automatically fill future purchase agreements — fill in the Buyer fields below, then save them to your
+          profile.
+        </div>
+      )}
 
       <PartyFields prefix="buyer" legend="Buyer" />
       <AdditionalParties name="additionalBuyers" label="Buyer" />
+      <SaveToProfileControl onSaveBuyerProfile={onSaveBuyerProfile} />
 
       <div className="h-px bg-border" />
 

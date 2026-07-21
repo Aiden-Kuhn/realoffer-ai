@@ -57,14 +57,17 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
       },
     },
     from(name: string) {
-      let eqFilter: [string, unknown] | null = null;
+      // All .eq() calls AND together, matching real Postgrest chaining —
+      // needed for tables keyed by more than one column (e.g.
+      // contract_defaults' user_id + category).
+      const eqFilters: Array<[string, unknown]> = [];
 
       const readBuilder = {
         select() {
           return readBuilder;
         },
         eq(col: string, val: unknown) {
-          eqFilter = [col, val];
+          eqFilters.push([col, val]);
           return readBuilder;
         },
         order(col: string, opts?: { ascending?: boolean }) {
@@ -74,7 +77,7 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
         async maybeSingle(): Promise<Result<Row | null>> {
           if (fails(name, "select")) return { data: null, error: new Error(`mock select failure on ${name}`) };
           const rows = table(name);
-          const match = eqFilter ? rows.find((r) => r[eqFilter![0]] === eqFilter![1]) : (rows[0] ?? null);
+          const match = eqFilters.length > 0 ? rows.find((r) => eqFilters.every(([c, v]) => r[c] === v)) : (rows[0] ?? null);
           return { data: match ?? null, error: null };
         },
       };
@@ -84,7 +87,7 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
           then<TResult>(onfulfilled: (value: Result<Row[]>) => TResult) {
             if (fails(name, "select")) return onfulfilled({ data: [], error: new Error(`mock select failure on ${name}`) });
             let rows = table(name);
-            if (eqFilter) rows = rows.filter((r) => r[eqFilter![0]] === eqFilter![1]);
+            if (eqFilters.length > 0) rows = rows.filter((r) => eqFilters.every(([c, v]) => r[c] === v));
             rows = [...rows].sort((a, b) => {
               const av = String(a[orderCol]);
               const bv = String(b[orderCol]);
@@ -95,7 +98,11 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
         };
       }
 
-      const idKey = name === "user_settings" ? "user_id" : "id";
+      // Which column(s) uniquely identify a row for upsert-matching
+      // purposes — mirrors each table's real unique constraint. Composite
+      // for contract_defaults since its constraint is (user_id, category).
+      const idKeys: string[] =
+        name === "user_settings" || name === "buyer_profiles" ? ["user_id"] : name === "contract_defaults" ? ["user_id", "category"] : ["id"];
 
       return {
         select: readBuilder.select,
@@ -123,9 +130,12 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
             async single(): Promise<Result<Row | null>> {
               if (fails(name, "upsert")) return { data: null, error: new Error(`mock upsert failure on ${name}`) };
               const rows = table(name);
-              const idx = rows.findIndex((r) => r[idKey] === row[idKey]);
+              const idx = rows.findIndex((r) => idKeys.every((k) => r[k] === row[k]));
               const now = new Date().toISOString();
-              const merged: Row = idx >= 0 ? { ...rows[idx], ...row, updated_at: now } : { created_at: now, updated_at: now, ...row };
+              const merged: Row =
+                idx >= 0
+                  ? { ...rows[idx], ...row, updated_at: now }
+                  : { id: crypto.randomUUID(), created_at: now, updated_at: now, ...row };
               if (idx >= 0) rows[idx] = merged;
               else rows.push(merged);
               return { data: merged, error: null };
@@ -158,15 +168,21 @@ export function createMockSupabaseClient(options: { session?: { user: { id: stri
           return builder;
         },
         delete() {
-          return {
-            async eq(col: string, val: unknown): Promise<Result<null>> {
-              if (fails(name, "delete")) return { data: null, error: new Error(`mock delete failure on ${name}`) };
+          const filters: Array<[string, unknown]> = [];
+          const builder = {
+            eq(col: string, val: unknown) {
+              filters.push([col, val]);
+              return builder;
+            },
+            then<TResult>(onfulfilled: (value: Result<null>) => TResult) {
+              if (fails(name, "delete")) return onfulfilled({ data: null, error: new Error(`mock delete failure on ${name}`) });
               const rows = table(name);
-              const idx = rows.findIndex((r) => r[col] === val);
+              const idx = rows.findIndex((r) => filters.every(([c, v]) => r[c] === v));
               if (idx >= 0) rows.splice(idx, 1);
-              return { data: null, error: null };
+              return onfulfilled({ data: null, error: null });
             },
           };
+          return builder;
         },
       };
     },

@@ -114,6 +114,81 @@ export type Database = {
           phone?: string;
         };
       };
+      contract_defaults: {
+        Relationships: [];
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          values: unknown;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: string;
+          values?: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string;
+          values?: unknown;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      buyer_profiles: {
+        Relationships: [];
+        Row: {
+          id: string;
+          user_id: string;
+          is_default: boolean;
+          legal_name: string;
+          entity_name: string;
+          mailing_address_line1: string;
+          mailing_city: string;
+          mailing_state: string;
+          mailing_zip: string;
+          email: string;
+          phone: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          is_default?: boolean;
+          legal_name?: string;
+          entity_name?: string;
+          mailing_address_line1?: string;
+          mailing_city?: string;
+          mailing_state?: string;
+          mailing_zip?: string;
+          email?: string;
+          phone?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          is_default?: boolean;
+          legal_name?: string;
+          entity_name?: string;
+          mailing_address_line1?: string;
+          mailing_city?: string;
+          mailing_state?: string;
+          mailing_zip?: string;
+          email?: string;
+          phone?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       contracts: {
         Relationships: [];
         Row: {

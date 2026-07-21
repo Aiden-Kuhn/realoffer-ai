@@ -76,6 +76,7 @@ const purchaseTermsSchema = z.object({
 const dueDiligenceSchema = z.object({
   inspectionPeriodDays: positiveDaysOrNull,
   inspectionDeadline: isoDateOrNull,
+  inspectionDeadlineManuallySet: z.boolean().default(false),
   rightToTerminateDuringInspection: z.boolean().default(false),
   propertyAccessTerms: longText,
   titleReviewPeriodDays: positiveDaysOrNull,

@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Lock, AlertTriangle } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
+import { BuyerProfileSection } from "@/components/dashboard/BuyerProfileSection";
+import { DueDiligenceDefaultsSection } from "@/components/dashboard/DueDiligenceDefaultsSection";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { usePropertyDataMode } from "@/hooks/usePropertyDataMode";
 import { useMounted } from "@/hooks/useMounted";
@@ -118,6 +120,12 @@ function SettingsForm() {
           {loadError}
         </div>
       ) : null}
+
+      {/* Each has its own <form>, independent save state — deliberately
+          outside the settings <form> below so none of them nest (invalid
+          HTML) or share a submit/error path. */}
+      <BuyerProfileSection />
+      <DueDiligenceDefaultsSection />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
         <section className="rounded-2xl border border-border bg-surface p-6">

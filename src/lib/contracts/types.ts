@@ -80,6 +80,11 @@ export type PropertyConditionOption = (typeof PROPERTY_CONDITIONS)[number];
 export type DueDiligenceSection = {
   inspectionPeriodDays: number | null;
   inspectionDeadline: string | null;
+  /** True once the user has typed directly into the deadline field —
+   * from then on, changing the inspection period or effective date no
+   * longer silently recomputes it (see lib/contracts/inspectionDeadline.ts).
+   * Clicking "Recalculate" clears this back to false. */
+  inspectionDeadlineManuallySet: boolean;
   rightToTerminateDuringInspection: boolean;
   propertyAccessTerms: string;
   titleReviewPeriodDays: number | null;

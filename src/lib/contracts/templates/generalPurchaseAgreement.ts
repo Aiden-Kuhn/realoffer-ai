@@ -1,7 +1,8 @@
 import { PROPERTY_TYPE_LABELS } from "@/lib/property/labels";
-import { emptyParty, type ContractFormData } from "@/lib/contracts/types";
+import { emptyParty, type ContractFormData, type PartyInfo } from "@/lib/contracts/types";
+import { calculateInspectionDeadline } from "@/lib/contracts/inspectionDeadline";
+import type { DueDiligenceDefaultsValues } from "@/lib/contractDefaults/types";
 import type { Deal } from "@/types/deal";
-import type { AppSettings } from "@/lib/repositories/settingsRepository";
 
 /**
  * The one template this milestone ships with — deliberately generic, not
@@ -59,6 +60,7 @@ export function emptyContractFormData(): ContractFormData {
     dueDiligence: {
       inspectionPeriodDays: null,
       inspectionDeadline: null,
+      inspectionDeadlineManuallySet: false,
       rightToTerminateDuringInspection: false,
       propertyAccessTerms: "",
       titleReviewPeriodDays: null,
@@ -83,11 +85,27 @@ export function emptyContractFormData(): ContractFormData {
 /**
  * Prefills only the fields RealOffer AI actually trusts — property address/
  * type/county from the analyzed deal, buyer identity/contact from the
- * user's saved profile, and the purchase price ONLY as a suggestion (never
- * silently confirmed — purchasePriceSource records which figure was offered,
- * but the builder must still make the user explicitly confirm it). Seller
- * info, parcel number, legal description, closing company, and every date
- * are left blank — RealOffer AI has no trusted source for any of them.
+ * user's saved Buyer Profile (see lib/buyerProfile/), and the purchase
+ * price ONLY as a suggestion (never silently confirmed —
+ * purchasePriceSource records which figure was offered, but the builder
+ * must still make the user explicitly confirm it). Seller info, parcel
+ * number, legal description, closing company, and every date are left
+ * blank — RealOffer AI has no trusted source for any of them, and seller
+ * data is never copied from or into the buyer profile.
+ *
+ * `buyerProfile` is null for a first-time user with no saved profile yet —
+ * the buyer section is simply left blank in that case, same as seller.
+ *
+ * `dueDiligenceDefaults` is null for a user with no saved defaults — the
+ * Due Diligence section is simply left blank in that case. Required seller
+ * disclosures are never populated from defaults (there is no such default —
+ * see lib/contractDefaults/types.ts). When an inspection period default is
+ * present, the deadline is computed immediately from *today* (this
+ * contract's about-to-be `created_at`) so a brand-new contract starts with
+ * a real, correctly-labeled "automatically calculated" deadline rather
+ * than a blank one — `inspectionDeadlineManuallySet` stays false, so the
+ * builder keeps recalculating it if the period changes before the user
+ * types over it directly.
  *
  * Defaults the purchase price to the deal's proposed contract price (a
  * number the user already entered during deal analysis, not an AI figure).
@@ -96,7 +114,7 @@ export function emptyContractFormData(): ContractFormData {
  * PurchasePriceStep — not applied here, so switching price sources is
  * always a deliberate action, never a silent default.
  */
-export function buildPrefillFromDeal(deal: Deal, buyerProfile: AppSettings): ContractFormData {
+export function buildPrefillFromDeal(deal: Deal, buyerProfile: PartyInfo | null, dueDiligenceDefaults: DueDiligenceDefaultsValues | null = null): ContractFormData {
   const base = emptyContractFormData();
 
   base.property.addressLine1 = deal.property.address.line1;
@@ -106,19 +124,32 @@ export function buildPrefillFromDeal(deal: Deal, buyerProfile: AppSettings): Con
   base.property.county = deal.property.county ?? "";
   base.property.propertyType = PROPERTY_TYPE_LABELS[deal.property.propertyType];
 
-  base.buyer.legalName = buyerProfile.fullName;
-  base.buyer.entityName = buyerProfile.companyName;
-  base.buyer.mailingAddressLine1 = buyerProfile.mailingAddressLine1;
-  base.buyer.mailingCity = buyerProfile.mailingCity;
-  base.buyer.mailingState = buyerProfile.mailingState;
-  base.buyer.mailingZip = buyerProfile.mailingZip;
-  base.buyer.phone = buyerProfile.phone;
-  // Buyer email intentionally left for the caller to fill from the
-  // authenticated user's auth.users email (not part of AppSettings).
+  if (buyerProfile) {
+    base.buyer.legalName = buyerProfile.legalName;
+    base.buyer.entityName = buyerProfile.entityName;
+    base.buyer.mailingAddressLine1 = buyerProfile.mailingAddressLine1;
+    base.buyer.mailingCity = buyerProfile.mailingCity;
+    base.buyer.mailingState = buyerProfile.mailingState;
+    base.buyer.mailingZip = buyerProfile.mailingZip;
+    base.buyer.email = buyerProfile.email;
+    base.buyer.phone = buyerProfile.phone;
+  }
 
   base.purchaseTerms.purchasePriceCents = deal.assumptions.contractPriceCents > 0 ? deal.assumptions.contractPriceCents : null;
   base.purchaseTerms.purchasePriceSource = base.purchaseTerms.purchasePriceCents !== null ? "proposed_contract_price" : null;
   base.purchaseTerms.earnestMoneyDueDate = null;
+
+  if (dueDiligenceDefaults) {
+    base.dueDiligence.inspectionPeriodDays = dueDiligenceDefaults.inspectionPeriodDays;
+    base.dueDiligence.titleReviewPeriodDays = dueDiligenceDefaults.titleReviewPeriodDays;
+    base.dueDiligence.rightToTerminateDuringInspection = dueDiligenceDefaults.rightToTerminateDuringInspection;
+    base.dueDiligence.surveyRequired = dueDiligenceDefaults.surveyRequired;
+    base.dueDiligence.propertyCondition = dueDiligenceDefaults.propertyCondition;
+    base.dueDiligence.propertyAccessTerms = dueDiligenceDefaults.propertyAccessTerms;
+    base.dueDiligence.dueDiligenceNotes = dueDiligenceDefaults.dueDiligenceNotes;
+    base.dueDiligence.inspectionDeadline = calculateInspectionDeadline(new Date().toISOString(), dueDiligenceDefaults.inspectionPeriodDays);
+    base.dueDiligence.inspectionDeadlineManuallySet = false;
+  }
 
   return base;
 }

@@ -8,13 +8,18 @@ import { AlertTriangle, Check, ChevronLeft, ChevronRight, Cloud, CloudOff, Copy,
 import { useContract } from "@/hooks/useContract";
 import { useDeal } from "@/hooks/useDeal";
 import { useAutosave } from "@/hooks/useAutosave";
+import { useBuyerProfile } from "@/hooks/useBuyerProfile";
+import { useDueDiligenceDefaults } from "@/hooks/useDueDiligenceDefaults";
 import { contractFormDataSchema, collectReadyForReviewIssues, collectAdvisoryWarnings, type ContractFormDataInput } from "@/lib/contracts/schema";
 import { contractRepository } from "@/lib/repositories/contractRepository";
+import { buyerProfileRepository } from "@/lib/repositories/buyerProfileRepository";
+import { contractDefaultsRepository } from "@/lib/repositories/contractDefaultsRepository";
 import { getTemplateMeta } from "@/lib/contracts/templates/index";
 import { US_STATES, stateNameForCode } from "@/lib/contracts/usStates";
 import { buildInvestmentAnalysisContext } from "@/lib/investmentAnalysis/buildContext";
 import { computeOfferGuidance } from "@/lib/investmentAnalysis/offerGuidance";
-import type { ContractFormData, AssignmentSection as AssignmentSectionData } from "@/lib/contracts/types";
+import type { ContractFormData, PartyInfo, AssignmentSection as AssignmentSectionData } from "@/lib/contracts/types";
+import type { DueDiligenceDefaultsValues } from "@/lib/contractDefaults/types";
 import { PropertyStep } from "@/components/contracts/PropertyStep";
 import { PartiesStep } from "@/components/contracts/PartiesStep";
 import { PurchaseTermsStep } from "@/components/contracts/PurchaseTermsStep";
@@ -104,6 +109,25 @@ function ContractBuilderContent({ contract }: { contract: NonNullable<ReturnType
   const templateMeta = getTemplateMeta(contract.templateId);
 
   const { deal } = useDeal(contract.dealId);
+  const { buyerProfile, setBuyerProfile } = useBuyerProfile();
+  const { dueDiligenceDefaults, setDueDiligenceDefaults } = useDueDiligenceDefaults();
+
+  // Independent of contract autosave: only fires when the user explicitly
+  // clicks "save to my profile" in PartiesStep — never as a side effect of
+  // editing this contract's buyer fields.
+  async function handleSaveBuyerProfile(party: PartyInfo) {
+    const saved = await buyerProfileRepository.save(party);
+    setBuyerProfile(saved);
+  }
+
+  // Independent of contract autosave: only fires when the user explicitly
+  // clicks "save these as my defaults" in DueDiligenceStep — never as a
+  // side effect of editing this contract's due-diligence fields.
+  async function handleSaveDueDiligenceDefaults(values: DueDiligenceDefaultsValues) {
+    const saved = await contractDefaultsRepository.saveDueDiligenceDefaults(values);
+    setDueDiligenceDefaults(saved);
+  }
+
   const offerGuidance = useMemo(() => {
     if (!deal) return null;
     try {
@@ -275,7 +299,7 @@ function ContractBuilderContent({ contract }: { contract: NonNullable<ReturnType
 
         <div className="rounded-2xl border border-border bg-surface p-6">
           {step === "property" ? <PropertyStep /> : null}
-          {step === "parties" ? <PartiesStep /> : null}
+          {step === "parties" ? <PartiesStep buyerProfile={buyerProfile} onSaveBuyerProfile={handleSaveBuyerProfile} /> : null}
           {step === "purchaseTerms" ? (
             <PurchaseTermsStep
               assignmentEnabled={assignmentEnabled}
@@ -284,7 +308,13 @@ function ContractBuilderContent({ contract }: { contract: NonNullable<ReturnType
               offerGuidance={offerGuidance}
             />
           ) : null}
-          {step === "dueDiligence" ? <DueDiligenceStep /> : null}
+          {step === "dueDiligence" ? (
+            <DueDiligenceStep
+              dueDiligenceDefaults={dueDiligenceDefaults}
+              onSaveDueDiligenceDefaults={handleSaveDueDiligenceDefaults}
+              contractCreatedAt={contract.createdAt}
+            />
+          ) : null}
           {step === "assignment" && assignmentEnabled ? <AssignmentStep /> : null}
           {step === "additionalTerms" ? <AdditionalTermsStep /> : null}
           {step === "review" ? (
