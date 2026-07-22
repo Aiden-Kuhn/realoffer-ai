@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,9 +9,11 @@ import { Sparkles, AlertCircle } from "lucide-react";
 import { Field, inputClasses } from "@/components/shared/Field";
 import { loginSchema, type LoginFormValues } from "@/lib/validation/schemas";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { resolveSafeRedirect } from "@/lib/auth/redirectTarget";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -31,7 +33,7 @@ export function LoginForm() {
       setIsSubmitting(false);
       return;
     }
-    router.push("/dashboard");
+    router.push(resolveSafeRedirect(searchParams.get("redirectTo")));
   }
 
   return (

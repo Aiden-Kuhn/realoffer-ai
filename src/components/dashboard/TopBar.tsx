@@ -37,14 +37,14 @@ export function TopBar({ onOpenMobileNav }: TopBarProps) {
       </div>
 
       <Link
-        href="/dashboard/analyze"
+        href="/analyze"
         className="hidden sm:inline-flex items-center gap-1.5 h-9 shrink-0 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
       >
         <Plus className="h-4 w-4" />
         Analyze New Deal
       </Link>
       <Link
-        href="/dashboard/analyze"
+        href="/analyze"
         aria-label="Analyze new deal"
         className="sm:hidden flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shrink-0 hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
       >

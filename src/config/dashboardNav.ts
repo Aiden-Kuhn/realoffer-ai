@@ -8,7 +8,7 @@ export type DashboardNavItem = {
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Analyze Deal", href: "/dashboard/analyze", icon: Search },
+  { label: "Analyze Deal", href: "/analyze", icon: Search },
   { label: "Saved Deals", href: "/dashboard/deals", icon: Bookmark },
   { label: "Contracts", href: "/dashboard/contracts", icon: FileText },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },

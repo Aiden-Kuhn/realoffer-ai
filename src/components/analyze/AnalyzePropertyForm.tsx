@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, AlertTriangle, Loader2, MapPinned, RotateCcw, Sparkles } from "lucide-react";
-import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { Tabs } from "@/components/shared/Tabs";
 import { ListingLinkForm } from "@/components/forms/ListingLinkForm";
 import { ManualPropertyForm, type ManualPropertyOverrides } from "@/components/forms/ManualPropertyForm";
@@ -24,20 +23,20 @@ const TAB_ITEMS = [
 ];
 
 const LINK_STEPS = [
-  "Validating listing link",
-  "Extracting address",
-  "Looking up property record",
-  "Looking for an active listing",
-  "Retrieving valuation and comparable sales",
-  "Preparing calculation workspace",
+  "Reading listing link",
+  "Extracting property address",
+  "Retrieving property data",
+  "Finding comparable sales",
+  "Calculating deal metrics",
+  "Preparing your property workspace",
 ];
 
 const MANUAL_STEPS = [
-  "Normalizing address",
-  "Looking up property record",
-  "Looking for an active listing",
-  "Retrieving valuation and comparable sales",
-  "Preparing calculation workspace",
+  "Reading property address",
+  "Retrieving property data",
+  "Finding comparable sales",
+  "Calculating deal metrics",
+  "Preparing your property workspace",
 ];
 
 const STEP_INTERVAL_MS = 650;
@@ -56,8 +55,15 @@ function applyOverrides(property: PropertyRecord, overrides: ManualPropertyOverr
 
 type Phase = "idle" | "loading" | "ambiguous" | "error" | "storage-error";
 
-export function AnalyzePage() {
-  useSetPageHeader("Analyze Deal");
+/**
+ * The tabs, forms, and analysis state machine for starting a new deal —
+ * deliberately chrome-agnostic (no page heading, no dashboard page-header
+ * context) so it can be embedded by the focused /analyze page without any
+ * dashboard-shell dependency. Business logic (address analysis, deal
+ * creation, draft storage, navigation) is unchanged from the previous
+ * dashboard-embedded analyze page — only where this renders changed.
+ */
+export function AnalyzePropertyForm() {
   const router = useRouter();
   const [tab, setTab] = useState("link");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -98,7 +104,9 @@ export function AnalyzePage() {
   /** Returns true on success. Settings come from Supabase (falls back to
    * defaults on failure so a settings-fetch hiccup never blocks starting an
    * analysis); the draft itself is still a local sessionStorage cache until
-   * the user explicitly saves it (see draftDealStore.ts). */
+   * the user explicitly saves it (see draftDealStore.ts). Writing the draft
+   * here — with the property/comparables data already fetched — is what
+   * lets the Property Workspace open without refetching anything. */
   async function finalizeAndNavigate(property: PropertyRecord, overrides?: ManualPropertyOverrides): Promise<boolean> {
     try {
       const finalProperty = overrides ? applyOverrides(property, overrides) : property;
@@ -200,16 +208,7 @@ export function AnalyzePage() {
   const isSubmitting = phase === "loading";
 
   return (
-    <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Analyze a deal</h1>
-        <p className="mt-1.5 text-sm text-muted leading-relaxed">
-          {mode === "rentcast"
-            ? "Paste a Zillow listing link or enter a property manually to pull real property data from RentCast and generate an editable investment analysis."
-            : "Paste a Zillow listing link or enter a property manually to generate an instant, editable investment analysis using deterministic demo data."}
-        </p>
-      </div>
-
+    <div>
       <Tabs items={TAB_ITEMS} value={tab} onChange={handleTabChange} className="mb-6" />
 
       {incompleteAddressNotice && tab === "manual" ? (
@@ -230,8 +229,12 @@ export function AnalyzePage() {
       ) : null}
 
       {phase === "loading" ? (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent-3/25 bg-accent-3/[0.06] px-4 py-3.5 text-sm text-white/80">
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-3" />
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-5 flex items-center gap-3 rounded-xl border border-accent-3/25 bg-accent-3/[0.06] px-4 py-3.5 text-sm text-white/80"
+        >
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-3" aria-hidden="true" />
           {stepLabel}
         </div>
       ) : null}
@@ -262,7 +265,7 @@ export function AnalyzePage() {
       ) : null}
 
       {phase === "error" && errorCode ? (
-        <div className="mb-5 flex flex-col gap-3 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-4 text-sm">
+        <div role="alert" className="mb-5 flex flex-col gap-3 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-4 text-sm">
           <div className="flex items-start gap-2.5 text-red-200">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             {describeProviderErrorCode(errorCode)}

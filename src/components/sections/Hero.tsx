@@ -48,7 +48,7 @@ export function Hero() {
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button href="/dashboard/analyze" variant="secondary" size="lg">
+              <Button href="/analyze" variant="secondary" size="lg">
                 <Play className="h-4 w-4" />
                 Watch Demo
               </Button>

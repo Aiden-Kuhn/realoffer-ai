@@ -86,7 +86,7 @@ export function OverviewPage() {
           <p className="mt-1 text-sm text-muted">Here&apos;s what&apos;s happening across your deal pipeline.</p>
         </div>
         <Link
-          href="/dashboard/analyze"
+          href="/analyze"
           className="inline-flex items-center justify-center gap-2 h-11 rounded-full bg-white px-5 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150 shrink-0"
         >
           <Plus className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function OverviewPage() {
             <div className="flex flex-col items-center gap-3">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Link
-                  href="/dashboard/analyze"
+                  href="/analyze"
                   className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
                 >
                   Analyze a property
