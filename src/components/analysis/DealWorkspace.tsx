@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Trash2, ArrowLeft, FileQuestion, AlertTriangle, RefreshCw, Loader2, FileSignature } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BarChart3, Calculator, ClipboardList, Copy, FileQuestion, FileSignature, Hammer, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useMounted } from "@/hooks/useMounted";
@@ -18,35 +18,45 @@ import {
   GENERAL_PURCHASE_AGREEMENT_TEMPLATE_VERSION,
 } from "@/lib/contracts/templates/generalPurchaseAgreement";
 import { clearDraftDeal } from "@/lib/repositories/draftDealStore";
+import { getStoredWorkspaceSection, saveWorkspaceSection, type WorkspaceSectionKey } from "@/lib/repositories/workspaceSectionStore";
 import { buildDealFinancialResults, resolveSelectedArvCents } from "@/lib/calculations/buildDealResults";
 import { computeRepairTotalCents } from "@/lib/calculations/repairs";
 import { computeDealRisks } from "@/lib/calculations/risks";
+import { formatCents } from "@/lib/calculations/money";
 import { hasSufficientPropertyInfo } from "@/lib/property/completeness";
 import { withEffectiveBedsBaths } from "@/lib/property/bedsBathsOverride";
+import { formatBedsBaths } from "@/lib/property/labels";
 import { analyzePropertyAddress } from "@/lib/property/providerSelection";
 import { describeProviderErrorCode } from "@/lib/property/errorMessages";
-import { PropertyHeader } from "@/components/analysis/PropertyHeader";
-import { DataSourceBanner } from "@/components/analysis/DataSourceBanner";
-import { PropertyOverview } from "@/components/analysis/PropertyOverview";
-import { AssumptionsForm } from "@/components/analysis/AssumptionsForm";
-import { ArvPanel } from "@/components/analysis/ArvPanel";
+import { CONDITION_PRESETS } from "@/config/repairPresets";
+import { PropertySummaryBar } from "@/components/analysis/PropertySummaryBar";
+import { WorkspaceNavigationGrid, type WorkspaceCard } from "@/components/analysis/WorkspaceNavigationGrid";
+import { WorkspaceSectionContent } from "@/components/analysis/WorkspaceSectionContent";
+import { DealAnalysisSection } from "@/components/analysis/sections/DealAnalysisSection";
+import { ArvComparablesSection } from "@/components/analysis/sections/ArvComparablesSection";
 import { RepairEstimator } from "@/components/analysis/RepairEstimator";
-import { ComparablesTable } from "@/components/analysis/ComparablesTable";
-import { RiskList } from "@/components/analysis/RiskList";
-import { InvestmentAnalyst } from "@/components/analysis/InvestmentAnalyst";
-import { CalculationExplainer } from "@/components/analysis/CalculationExplainer";
-import { SummaryPanel } from "@/components/analysis/SummaryPanel";
+import { PropertyDetailsSection } from "@/components/analysis/sections/PropertyDetailsSection";
+import { RisksSection } from "@/components/analysis/sections/RisksSection";
+import { ContractSection } from "@/components/analysis/sections/ContractSection";
 import { Disclaimers } from "@/components/shared/Disclaimers";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { textareaClasses } from "@/components/shared/Field";
-import { DEAL_PIPELINE_STATUSES, DEAL_PIPELINE_STATUS_LABELS, type Deal, type DealAssumptions, type DealPipelineStatus } from "@/types/deal";
+import { type Deal, type DealAssumptions, type DealPipelineStatus } from "@/types/deal";
 import type { RepairEstimateState } from "@/lib/calculations/repairs";
 import type { ComparableSale, PropertyRecord } from "@/lib/property/types";
 import { DealInputValidationError, type DealFinancialResults } from "@/lib/calculations/types";
 import type { InvestmentAnalysisResult } from "@/lib/investmentAnalysis/types";
 import { buildInvestmentAnalysisContext } from "@/lib/investmentAnalysis/buildContext";
 import { computeDealScore } from "@/lib/investmentAnalysis/dealScore";
+
+const SECTION_DESCRIPTIONS: Record<WorkspaceSectionKey, string> = {
+  dealAnalysis: "Offer calculations, editable assumptions, and the investment verdict for this deal.",
+  arvComparables: "Comparable sales and the selected after-repair value used in calculations.",
+  repairEstimate: "Estimate rehab costs by condition preset, category, or a manual total.",
+  propertyDetails: "Bedrooms, bathrooms, square footage, and where each fact comes from.",
+  risks: "Warnings, missing information, and anything else worth reviewing before moving forward.",
+  contract: "Generate a purchase agreement prefilled from this deal and your saved defaults.",
+};
 
 export function DealWorkspace({ id }: { id: string }) {
   const mounted = useMounted();
@@ -99,6 +109,17 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
   const [notes, setNotes] = useState(deal.notes);
   const [status, setStatus] = useState<DealPipelineStatus>(deal.status);
   const [investmentAnalysis, setInvestmentAnalysis] = useState<InvestmentAnalysisResult | undefined>(deal.investmentAnalysis);
+
+  // Which workspace card is open — defaults to Deal Analysis for a deal
+  // with no stored preference (including every freshly-analyzed deal),
+  // and remembers the choice per-deal across visits (see
+  // lib/repositories/workspaceSectionStore.ts).
+  const [activeSection, setActiveSectionState] = useState<WorkspaceSectionKey>(() => getStoredWorkspaceSection(deal.id) ?? "dealAnalysis");
+
+  function selectSection(key: WorkspaceSectionKey) {
+    setActiveSectionState(key);
+    saveWorkspaceSection(deal.id, key);
+  }
 
   const [isSaving, setIsSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -247,6 +268,62 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     }
   }
 
+  const isProfitNegative = results ? results.projectedInvestorProfitCents < 0 : false;
+  const isBedsBathsCorrected = bedroomsOverride !== null || bathroomsOverride !== null;
+  const propertyDataSourceLabel = property.source === "rentcast" ? "RentCast data" : "Demo data";
+  const propertyDetailsDescription =
+    [
+      formatBedsBaths(effectiveProperty.bedrooms, effectiveProperty.bathrooms),
+      property.squareFootage ? `${property.squareFootage.toLocaleString()} sqft` : null,
+    ]
+      .filter(Boolean)
+      .join(" • ") || "Bedrooms, bathrooms, sqft & more";
+
+  const workspaceCards: WorkspaceCard[] = [
+    {
+      key: "dealAnalysis",
+      icon: Calculator,
+      title: "Deal Analysis",
+      description: "Offer calculations & assumptions",
+      metric: results ? formatCents(results.projectedInvestorProfitCents) : "Needs attention",
+      metricTone: results ? (isProfitNegative ? "negative" : "positive") : "warning",
+    },
+    {
+      key: "arvComparables",
+      icon: BarChart3,
+      title: "ARV & Comparable Sales",
+      description: `${comparables.length} comparable propert${comparables.length === 1 ? "y" : "ies"}`,
+      metric: `Expected ARV ${formatCents(arvCents)}`,
+    },
+    {
+      key: "repairEstimate",
+      icon: Hammer,
+      title: "Repair Estimate",
+      description: CONDITION_PRESETS[repairEstimate.conditionPreset].label,
+      metric: `Estimated ${formatCents(repairCents)}`,
+    },
+    {
+      key: "propertyDetails",
+      icon: ClipboardList,
+      title: "Property Details",
+      description: propertyDetailsDescription,
+      metric: isBedsBathsCorrected ? `${propertyDataSourceLabel} • Corrected` : propertyDataSourceLabel,
+    },
+    {
+      key: "risks",
+      icon: AlertTriangle,
+      title: "Risks",
+      description: risks.length > 0 ? `${risks.length} Issue${risks.length === 1 ? "" : "s"} Found` : "No issues found",
+      metricTone: risks.length > 0 ? "warning" : "neutral",
+    },
+    {
+      key: "contract",
+      icon: FileSignature,
+      title: "Contract",
+      description: isSaved ? "Ready to Generate" : "Save this property first",
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -256,15 +333,6 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
         </Link>
         {isSaved ? (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCreateContract}
-              disabled={isCreatingContract}
-              className="inline-flex items-center gap-1.5 h-9 rounded-full bg-white px-3.5 text-xs font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150 disabled:opacity-60"
-            >
-              {isCreatingContract ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSignature className="h-3.5 w-3.5" />}
-              {isCreatingContract ? "Starting…" : "Create Purchase Agreement"}
-            </button>
             <button
               type="button"
               onClick={handleDuplicate}
@@ -296,150 +364,81 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
-        <div className="flex flex-col gap-6 min-w-0">
-          <PropertyHeader property={property} status={status} bedroomsOverride={bedroomsOverride} bathroomsOverride={bathroomsOverride} />
-          <DataSourceBanner source={property.source} />
+      <PropertySummaryBar
+        property={property}
+        status={status}
+        bedroomsOverride={bedroomsOverride}
+        bathroomsOverride={bathroomsOverride}
+        dealScore={dealScore}
+        results={results}
+        arvCents={arvCents}
+        isSaved={isSaved}
+        isSaving={isSaving}
+        justSaved={justSaved}
+        onSave={handleSave}
+        isCreatingContract={isCreatingContract}
+        onCreateContract={handleCreateContract}
+      />
 
-          <div className="flex flex-wrap items-center justify-between gap-2 -mt-2">
-            <p className="text-xs text-muted">
-              Last retrieved {new Date(property.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </p>
-            <button
-              type="button"
-              onClick={handleRefreshPropertyData}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-1.5 h-8 rounded-full border border-border px-3 text-xs font-medium text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:active:scale-100"
-            >
-              {isRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              {isRefreshing ? "Refreshing..." : "Refresh Property Data"}
-            </button>
-          </div>
-          {refreshError ? <p className="text-xs text-red-400 -mt-3">{refreshError}</p> : null}
+      <WorkspaceNavigationGrid cards={workspaceCards} activeSection={activeSection} onSelect={selectSection} />
 
-          <PropertyOverview
+      <WorkspaceSectionContent
+        sectionKey={activeSection}
+        title={workspaceCards.find((c) => c.key === activeSection)?.title ?? ""}
+        description={SECTION_DESCRIPTIONS[activeSection]}
+      >
+        {activeSection === "dealAnalysis" ? (
+          <DealAnalysisSection
+            dealId={deal.id}
+            property={effectiveProperty}
+            comparables={comparables}
+            repairEstimate={repairEstimate}
+            repairCents={repairCents}
+            arvCents={arvCents}
+            assumptions={assumptions}
+            onChangeAssumptions={setAssumptions}
+            results={results}
+            calculationError={calculationError}
+            hasSufficientPropertyInfo={sufficientInfo}
+            savedAnalysis={investmentAnalysis}
+            onAnalysisChange={setInvestmentAnalysis}
+            status={status}
+            onChangeStatus={setStatus}
+            notes={notes}
+            onChangeNotes={setNotes}
+          />
+        ) : null}
+        {activeSection === "arvComparables" ? (
+          <ArvComparablesSection
+            property={property}
+            comparables={comparables}
+            onChangeComparables={setComparables}
+            arvOverrideCents={assumptions.arvOverrideCents}
+            onChangeArvOverride={(cents) => setAssumptions({ ...assumptions, arvOverrideCents: cents })}
+          />
+        ) : null}
+        {activeSection === "repairEstimate" ? (
+          <RepairEstimator repairEstimate={repairEstimate} squareFootage={property.squareFootage} onChange={setRepairEstimate} />
+        ) : null}
+        {activeSection === "propertyDetails" ? (
+          <PropertyDetailsSection
             property={property}
             bedroomsOverride={bedroomsOverride}
             bathroomsOverride={bathroomsOverride}
             onChangeBedroomsOverride={setBedroomsOverride}
             onChangeBathroomsOverride={setBathroomsOverride}
+            isRefreshing={isRefreshing}
+            refreshError={refreshError}
+            onRefresh={handleRefreshPropertyData}
           />
-          <AssumptionsForm assumptions={assumptions} onChange={setAssumptions} />
-          <ArvPanel
-            property={property}
-            comparables={comparables}
-            arvOverrideCents={assumptions.arvOverrideCents}
-            onChangeOverride={(cents) => setAssumptions({ ...assumptions, arvOverrideCents: cents })}
-          />
-          <RepairEstimator repairEstimate={repairEstimate} squareFootage={property.squareFootage} onChange={setRepairEstimate} />
-          <ComparablesTable comparables={comparables} onChange={setComparables} />
+        ) : null}
+        {activeSection === "risks" ? <RisksSection risks={risks} calculationError={calculationError} /> : null}
+        {activeSection === "contract" ? (
+          <ContractSection isSaved={isSaved} isCreatingContract={isCreatingContract} onCreateContract={handleCreateContract} />
+        ) : null}
+      </WorkspaceSectionContent>
 
-          {calculationError ? (
-            <div className="flex items-start gap-2.5 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3.5 text-sm text-red-300">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                <span className="font-medium">Can&apos;t calculate this deal right now:</span> {calculationError} Adjust the
-                assumptions above to continue.
-              </span>
-            </div>
-          ) : (
-            <RiskList risks={risks} />
-          )}
-
-          {results ? (
-            <InvestmentAnalyst
-              dealId={deal.id}
-              property={effectiveProperty}
-              comparables={comparables}
-              repairEstimate={repairEstimate}
-              assumptions={assumptions}
-              results={results}
-              savedAnalysis={investmentAnalysis}
-              onAnalysisChange={setInvestmentAnalysis}
-            />
-          ) : null}
-
-          <section className="rounded-2xl border border-border bg-surface p-6">
-            <h2 className="text-sm font-semibold text-white mb-3">Status and notes</h2>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="sm:w-56 shrink-0">
-                <label htmlFor="status" className="block text-sm font-medium text-white/80 mb-1.5">
-                  Pipeline status
-                </label>
-                <select
-                  id="status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as DealPipelineStatus)}
-                  className="w-full h-11 rounded-lg border border-border bg-surface px-3.5 text-[15px] text-white outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/20 appearance-none"
-                >
-                  {DEAL_PIPELINE_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {DEAL_PIPELINE_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label htmlFor="notes" className="block text-sm font-medium text-white/80 mb-1.5">
-                  Notes
-                </label>
-                <textarea
-                  id="notes"
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes about this deal..."
-                  className={textareaClasses}
-                />
-              </div>
-            </div>
-          </section>
-
-          {results ? (
-            <CalculationExplainer
-              inputs={{
-                listPriceCents: property.listPriceCents ?? 0,
-                contractPriceCents: assumptions.contractPriceCents,
-                arvCents,
-                repairCostCents: repairCents,
-                desiredAssignmentFeeCents: assumptions.desiredAssignmentFeeCents,
-                buyerClosingCostsCents: assumptions.buyerClosingCostsCents,
-                holdingCostsCents: assumptions.holdingCostsCents,
-                financingCostsCents: assumptions.financingCostsCents,
-                sellingCostsCents: assumptions.sellingCostsCents,
-                investorTargetProfitCents: assumptions.investorTargetProfitCents,
-                investorArvPercentage: assumptions.investorArvPercentage,
-                maoMethod: assumptions.maoMethod,
-              }}
-              results={results}
-            />
-          ) : null}
-
-          <Disclaimers />
-        </div>
-
-        {results ? (
-          <SummaryPanel
-            arvCents={arvCents}
-            repairCents={repairCents}
-            results={results}
-            assumptions={assumptions}
-            hasSufficientPropertyInfo={sufficientInfo}
-            dealScore={dealScore}
-            onSave={handleSave}
-            isSaving={isSaving}
-            justSaved={justSaved}
-          />
-        ) : (
-          <aside className="lg:sticky lg:top-6 rounded-2xl border border-red-400/25 bg-surface-2 p-6">
-            <p className="text-sm text-red-300 font-medium">Summary unavailable</p>
-            <p className="mt-2 text-sm text-muted leading-relaxed">
-              One of the assumption values above is out of a supported range, so results can&apos;t be calculated. Fix
-              the highlighted input to see the summary and save the deal again.
-            </p>
-          </aside>
-        )}
-      </div>
+      <Disclaimers />
 
       <ConfirmDialog
         open={deleteOpen}

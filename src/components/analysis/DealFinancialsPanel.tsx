@@ -1,52 +1,38 @@
 "use client";
 
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { formatCents } from "@/lib/calculations/money";
 import { ClassificationBadge } from "@/components/shared/ClassificationBadge";
-import { DealScoreBadge } from "@/components/shared/DealScoreBadge";
 import { explainClassification } from "@/lib/calculations/explainClassification";
 import type { DealFinancialResults } from "@/lib/calculations/types";
 import type { DealAssumptions } from "@/types/deal";
-import type { RealOfferDealScore } from "@/lib/investmentAnalysis/types";
 
-type SummaryPanelProps = {
-  arvCents: number;
+/**
+ * The financial detail card inside the Deal Analysis section. Deal Score,
+ * ARV, and Maximum Allowable Offer already live in `PropertySummaryBar` at
+ * the top of the page — this only shows what isn't duplicated there:
+ * classification reasoning, repairs/profit, and the supporting cost rows.
+ */
+type DealFinancialsPanelProps = {
   repairCents: number;
   results: DealFinancialResults;
   assumptions: DealAssumptions;
   hasSufficientPropertyInfo: boolean;
-  dealScore: RealOfferDealScore | null;
-  onSave: () => void;
-  isSaving: boolean;
-  justSaved: boolean;
 };
 
-type MetricTone = "neutral" | "accent" | "positive" | "negative";
+type MetricTone = "neutral" | "positive" | "negative";
 
 const TONE_STYLES: Record<MetricTone, { border: string; bg: string; label: string; value: string }> = {
-  neutral: { border: "border-border", bg: "bg-surface", label: "text-muted", value: "text-white" },
-  accent: { border: "border-accent-3/25", bg: "bg-accent-3/[0.07]", label: "text-accent-3", value: "text-white" },
+  neutral: { border: "border-border", bg: "bg-surface-2", label: "text-muted", value: "text-white" },
   positive: { border: "border-emerald-400/25", bg: "bg-emerald-400/[0.07]", label: "text-emerald-300/90", value: "text-emerald-300" },
   negative: { border: "border-red-400/25", bg: "bg-red-400/[0.07]", label: "text-red-300/90", value: "text-red-300" },
 };
 
-export function SummaryPanel({
-  arvCents,
-  repairCents,
-  results,
-  assumptions,
-  hasSufficientPropertyInfo,
-  dealScore,
-  onSave,
-  isSaving,
-  justSaved,
-}: SummaryPanelProps) {
+export function DealFinancialsPanel({ repairCents, results, assumptions, hasSufficientPropertyInfo }: DealFinancialsPanelProps) {
   const isProfitNegative = results.projectedInvestorProfitCents < 0;
 
   const heroMetrics: Array<{ label: string; value: string; tone: MetricTone }> = [
-    { label: "Expected ARV", value: formatCents(arvCents), tone: "neutral" },
     { label: "Estimated repairs", value: formatCents(repairCents), tone: "neutral" },
-    { label: "Maximum allowable offer", value: formatCents(results.maximumAllowableOfferCents), tone: "accent" },
     {
       label: "Projected investor profit",
       value: formatCents(results.projectedInvestorProfitCents),
@@ -64,14 +50,7 @@ export function SummaryPanel({
   const explanation = explainClassification(results, hasSufficientPropertyInfo);
 
   return (
-    <aside className="lg:sticky lg:top-6 rounded-2xl border border-border-strong bg-surface-2 p-6 flex flex-col gap-5 shadow-elevated">
-      {dealScore ? (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-muted">RealOffer Deal Score</span>
-          <DealScoreBadge score={dealScore.score} label={dealScore.label} labelText={dealScore.labelText} />
-        </div>
-      ) : null}
-
+    <section className="rounded-2xl border border-border bg-surface p-6 flex flex-col gap-5">
       <div>
         <p className="text-xs text-muted mb-2">Deal classification</p>
         <ClassificationBadge classification={results.dealClassification} />
@@ -93,7 +72,7 @@ export function SummaryPanel({
       <div className="h-px bg-border" />
 
       <div>
-        <p className="text-xs text-muted mb-2.5">Key numbers</p>
+        <p className="text-xs text-muted mb-2.5">Repairs &amp; profit</p>
         <div className="grid grid-cols-2 auto-rows-fr gap-2.5">
           {heroMetrics.map((metric) => {
             const tone = TONE_STYLES[metric.tone];
@@ -120,19 +99,6 @@ export function SummaryPanel({
           </div>
         ))}
       </dl>
-
-      <div className="h-px bg-border" />
-
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={isSaving}
-        className="inline-flex items-center justify-center gap-2 h-11 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:hover:translate-y-0"
-      >
-        {justSaved ? <Check className="h-4 w-4" /> : null}
-        {justSaved ? "Saved" : isSaving ? "Saving..." : "Save Deal"}
-      </button>
-      <p className="text-[11px] text-muted -mt-2 text-center">Saved to your account — accessible from any device you log in on.</p>
-    </aside>
+    </section>
   );
 }
