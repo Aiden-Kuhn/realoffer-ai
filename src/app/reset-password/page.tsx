@@ -13,9 +13,17 @@ export const metadata: Metadata = { title: "Reset Password — RealOffer AI" };
  * ever set a new password.
  *
  * The Suspense boundary is required because ResetPasswordForm reads
- * useSearchParams() (to detect ?error=invalid_link) and this route has no
+ * useSearchParams() (to detect a Supabase error redirect, e.g.
+ * ?error=access_denied&error_code=otp_expired) and this route has no
  * server-side data fetch of its own — without it, Next can't statically
  * prerender the page at build time.
+ *
+ * The recovery session itself is never handled here or in a route handler:
+ * clicking the (default, unedited) Supabase recovery email link lands the
+ * browser directly on this page with a PKCE `?code=` param, and the
+ * Supabase browser client (see lib/supabase/client.ts, detectSessionInUrl
+ * defaults to true) detects and exchanges it automatically on load, before
+ * ResetPasswordForm's useAuth() session check ever runs.
  */
 export default function ResetPasswordPage() {
   return (

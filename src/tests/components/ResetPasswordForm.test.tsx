@@ -39,9 +39,24 @@ describe("ResetPasswordForm — session verification", () => {
     expect(screen.getByRole("link", { name: "Request a new link" })).toHaveAttribute("href", "/forgot-password");
   });
 
-  it("shows an expired/invalid-link message when redirected here with ?error=invalid_link", () => {
+  it("shows an expired/invalid-link message for Supabase's own hosted-verify error redirect shape (expired/reused link)", () => {
     authState = { user: null, isLoading: false };
-    searchParamsValue = new URLSearchParams({ error: "invalid_link" });
+    // This is the exact query string Supabase's hosted recovery-link
+    // verification appends to redirectTo for an expired or already-used
+    // link — there's no custom route in this flow to normalize it into a
+    // different shape, so ResetPasswordForm must recognize it directly.
+    searchParamsValue = new URLSearchParams({
+      error: "access_denied",
+      error_code: "otp_expired",
+      error_description: "Email link is invalid or has expired",
+    });
+    render(<ResetPasswordForm />);
+    expect(screen.getByText("This link is invalid or has expired")).toBeInTheDocument();
+  });
+
+  it("also recognizes any other Supabase error redirect (not just otp_expired) as an invalid link", () => {
+    authState = { user: null, isLoading: false };
+    searchParamsValue = new URLSearchParams({ error: "server_error" });
     render(<ResetPasswordForm />);
     expect(screen.getByText("This link is invalid or has expired")).toBeInTheDocument();
   });

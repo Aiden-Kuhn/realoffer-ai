@@ -127,7 +127,12 @@ export function ResetPasswordForm() {
   }
 
   if (!user) {
-    const invalidLink = searchParams.get("error") === "invalid_link";
+    // Supabase's own hosted recovery-link verification appends its error
+    // directly onto our redirectTo when a link is expired or already used
+    // (e.g. ?error=access_denied&error_code=otp_expired&error_description=...)
+    // — there's no custom route in this flow to normalize that into our own
+    // sentinel, so any `error` param present is treated as "bad link."
+    const invalidLink = Boolean(searchParams.get("error"));
     return (
       <Card>
         <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-red-400/10">

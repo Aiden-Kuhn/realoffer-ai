@@ -29,7 +29,11 @@ function renderAuth() {
 }
 
 describe("AuthProvider — sendPasswordResetEmail", () => {
-  it("calls Supabase's resetPasswordForEmail with a trimmed email and a redirectTo pointing at /reset-password", async () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("calls Supabase's resetPasswordForEmail with a trimmed email and the exact allow-listed redirectTo (not window.location.origin)", async () => {
     resetPasswordForEmailMock.mockResolvedValue({ error: null });
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -37,8 +41,25 @@ describe("AuthProvider — sendPasswordResetEmail", () => {
     const response = await result.current.sendPasswordResetEmail("  jamie@example.com  ");
 
     expect(response.error).toBeNull();
+    // Must be one of the two URLs actually entered in Supabase's Redirect
+    // URLs allow-list — anything else (e.g. a dynamic window.location.origin
+    // on a Vercel preview deployment) makes GoTrue silently fall back to the
+    // Site URL instead of erroring, which is the exact bug this guards.
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith("jamie@example.com", {
-      redirectTo: expect.stringContaining("/reset-password"),
+      redirectTo: "http://localhost:3000/reset-password",
+    });
+  });
+
+  it("uses the production URL when built for production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await result.current.sendPasswordResetEmail("jamie@example.com");
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("jamie@example.com", {
+      redirectTo: "https://realoffer-ai.vercel.app/reset-password",
     });
   });
 

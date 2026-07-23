@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { getPasswordResetRedirectUrl } from "@/lib/auth/passwordResetRedirect";
 import type { AppUser, AuthProviderContract, AuthResult } from "@/lib/auth/types";
 
 const AuthContext = createContext<AuthProviderContract | null>(null);
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // outcome either way and only surface this error for genuine failures
       // (network issues, rate limiting).
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: getPasswordResetRedirectUrl(),
       });
       return { error: error ? friendlyAuthError(error.message) : null };
     },
