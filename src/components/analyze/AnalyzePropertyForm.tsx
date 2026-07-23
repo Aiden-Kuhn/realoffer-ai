@@ -112,7 +112,7 @@ export function AnalyzePropertyForm() {
       const finalProperty = overrides ? applyOverrides(property, overrides) : property;
       const settings = await settingsRepository.get().catch(() => DEFAULT_SETTINGS);
       const deal = createDealFromProperty(finalProperty, settings);
-      deal.status = "analyzing";
+      deal.status = "ready";
       saveDraftDeal(deal);
       router.push(`/dashboard/deals/${deal.id}`);
       return true;

@@ -2,6 +2,7 @@ import { DEAL_PIPELINE_STATUS_LABELS, type DealPipelineStatus } from "@/types/de
 
 const STATUS_STYLES: Record<DealPipelineStatus, string> = {
   draft: "bg-white/8 text-white/60 border-white/10",
+  ready: "bg-sky-400/10 text-sky-300 border-sky-400/25",
   analyzing: "bg-accent-3/10 text-accent-3 border-accent-3/25",
   potential: "bg-accent/10 text-accent border-accent/25",
   pursuing: "bg-violet-400/10 text-violet-300 border-violet-400/25",

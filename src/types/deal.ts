@@ -5,6 +5,7 @@ import type { InvestmentAnalysisResult } from "@/lib/investmentAnalysis/types";
 
 export const DEAL_PIPELINE_STATUSES = [
   "draft",
+  "ready",
   "analyzing",
   "potential",
   "pursuing",
@@ -18,6 +19,12 @@ export type DealPipelineStatus = (typeof DEAL_PIPELINE_STATUSES)[number];
 
 export const DEAL_PIPELINE_STATUS_LABELS: Record<DealPipelineStatus, string> = {
   draft: "Draft",
+  /** The default status for a freshly-analyzed deal — analysis is already
+   * complete by the time a deal exists to have a status at all (see
+   * components/analyze/AnalyzePropertyForm.tsx). "Analyzing" below is kept
+   * only so deals saved before this status existed still render a valid
+   * badge; it's never assigned to a new deal. */
+  ready: "Ready",
   analyzing: "Analyzing",
   potential: "Potential",
   pursuing: "Pursuing",

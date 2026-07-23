@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Search, FolderSearch } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowDownNarrowWide, ArrowUpNarrowWide, FolderSearch, Search, Sparkles } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { useMounted } from "@/hooks/useMounted";
 import { useDeals } from "@/hooks/useDeals";
@@ -91,10 +92,19 @@ export function DealsListPage() {
           icon={FolderSearch}
           title="No saved deals yet"
           description="Analyses you save from the workspace will show up here."
+          action={
+            <Link
+              href="/analyze"
+              className="inline-flex items-center gap-2 h-10 rounded-full bg-white px-4 text-sm font-medium text-black hover:bg-white/90 active:scale-[0.98] transition-all duration-150"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyze Property
+            </Link>
+          }
         />
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <div className="relative flex-1 max-w-sm">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
               <input
@@ -110,7 +120,7 @@ export function DealsListPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as DealPipelineStatus | "all")}
               aria-label="Filter by status"
-              className={`${selectClasses} sm:w-48`}
+              className={`${selectClasses} sm:w-44`}
             >
               <option value="all">All statuses</option>
               {DEAL_PIPELINE_STATUSES.map((s) => (
@@ -119,26 +129,29 @@ export function DealsListPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as DealSortField)}
-              aria-label="Sort by"
-              className={`${selectClasses} sm:w-48`}
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  Sort: {opt.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
-              className="h-11 rounded-lg border border-border bg-surface px-3.5 text-sm text-white/70 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150"
-              aria-label="Toggle sort direction"
-            >
-              {sortDirection === "asc" ? "Asc" : "Desc"}
-            </button>
+            <div className="flex gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as DealSortField)}
+                aria-label="Sort by"
+                className={`${selectClasses} flex-1 sm:w-40`}
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    Sort: {opt.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-surface text-white/60 hover:text-white hover:border-border-strong active:scale-[0.98] transition-all duration-150"
+                aria-label={sortDirection === "asc" ? "Sorted ascending — click to sort descending" : "Sorted descending — click to sort ascending"}
+                title={sortDirection === "asc" ? "Ascending" : "Descending"}
+              >
+                {sortDirection === "asc" ? <ArrowUpNarrowWide className="h-4 w-4" /> : <ArrowDownNarrowWide className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {visibleDeals.length === 0 ? (

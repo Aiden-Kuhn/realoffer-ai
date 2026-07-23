@@ -43,6 +43,19 @@ describe("AnalyzePropertyForm — listing link", () => {
     expect(saveDraftDeal).toHaveBeenCalledTimes(1);
   });
 
+  it("saves a freshly-analyzed deal with status 'ready', never the misleading legacy 'analyzing' default", async () => {
+    vi.mocked(analyzePropertyAddress).mockResolvedValue({ status: "ok", property: makeProperty() });
+    const user = userEvent.setup();
+    render(<AnalyzePropertyForm />);
+
+    await user.type(screen.getByLabelText("Zillow listing URL", { exact: false }), VALID_ZILLOW_URL);
+    await user.click(screen.getByRole("button", { name: "Analyze Property" }));
+
+    await waitFor(() => expect(saveDraftDeal).toHaveBeenCalled());
+    const savedDeal = vi.mocked(saveDraftDeal).mock.calls[0][0];
+    expect(savedDeal.status).toBe("ready");
+  });
+
   it("shows a loading state while the request is in flight and disables the submit button", async () => {
     let resolveAnalysis: (value: Awaited<ReturnType<typeof analyzePropertyAddress>>) => void = () => {};
     vi.mocked(analyzePropertyAddress).mockReturnValue(

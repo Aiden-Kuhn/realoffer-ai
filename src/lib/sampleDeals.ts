@@ -11,7 +11,7 @@ import type { Deal, DealPipelineStatus } from "@/types/deal";
  */
 const SAMPLE_ADDRESSES: Array<{ line1: string; city: string; state: string; zip: string; status: DealPipelineStatus }> = [
   { line1: "428 Maple Ridge Dr", city: "Austin", state: "TX", zip: "78701", status: "potential" },
-  { line1: "17 Oak Hollow Ln", city: "Denver", state: "CO", zip: "80202", status: "analyzing" },
+  { line1: "17 Oak Hollow Ln", city: "Denver", state: "CO", zip: "80202", status: "ready" },
   { line1: "902 Cedar Point Ave", city: "Tampa", state: "FL", zip: "33602", status: "passed" },
   { line1: "365 Willow Creek Rd", city: "Columbus", state: "OH", zip: "43215", status: "draft" },
 ];
