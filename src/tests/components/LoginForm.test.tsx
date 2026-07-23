@@ -16,6 +16,13 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => ({ signIn: signInMock }),
 }));
 
+describe("LoginForm — forgot password link", () => {
+  it("links to /forgot-password underneath the password field", () => {
+    render(<LoginForm />);
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", "/forgot-password");
+  });
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();

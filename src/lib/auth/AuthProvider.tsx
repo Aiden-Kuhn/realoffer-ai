@@ -94,9 +94,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, [supabase]);
 
+  const sendPasswordResetEmail = useCallback<AuthProviderContract["sendPasswordResetEmail"]>(
+    async (email) => {
+      // Supabase deliberately returns success here whether or not the email
+      // belongs to an account — same non-enumeration behavior as signUp
+      // above — so the caller should show the same "check your email"
+      // outcome either way and only surface this error for genuine failures
+      // (network issues, rate limiting).
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error: error ? friendlyAuthError(error.message) : null };
+    },
+    [supabase],
+  );
+
+  const updatePassword = useCallback<AuthProviderContract["updatePassword"]>(
+    async (newPassword) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return { error: error ? friendlyAuthError(error.message) : null };
+    },
+    [supabase],
+  );
+
   const value = useMemo<AuthProviderContract>(
-    () => ({ user, isLoading, signIn, signUp, signOut }),
-    [user, isLoading, signIn, signUp, signOut],
+    () => ({ user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword }),
+    [user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

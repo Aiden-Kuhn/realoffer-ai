@@ -62,9 +62,14 @@ export function LoginForm() {
           <Field label="Email" htmlFor="email" error={errors.email?.message} required>
             <input id="email" type="email" autoComplete="email" placeholder="jamie@example.com" className={inputClasses} {...register("email")} />
           </Field>
-          <Field label="Password" htmlFor="password" error={errors.password?.message} required>
-            <input id="password" type="password" autoComplete="current-password" placeholder="••••••••" className={inputClasses} {...register("password")} />
-          </Field>
+          <div>
+            <Field label="Password" htmlFor="password" error={errors.password?.message} required>
+              <input id="password" type="password" autoComplete="current-password" placeholder="••••••••" className={inputClasses} {...register("password")} />
+            </Field>
+            <Link href="/forgot-password" className="mt-2 inline-block text-xs text-muted hover:text-white transition-colors">
+              Forgot password?
+            </Link>
+          </div>
 
           <button
             type="submit"

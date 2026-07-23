@@ -18,4 +18,6 @@ export interface AuthProviderContract {
   signIn(input: { email: string; password: string }): Promise<AuthResult>;
   signUp(input: { email: string; password: string; fullName?: string; companyName?: string }): Promise<AuthResult & { needsEmailConfirmation: boolean }>;
   signOut(): Promise<void>;
+  sendPasswordResetEmail(email: string): Promise<AuthResult>;
+  updatePassword(newPassword: string): Promise<AuthResult>;
 }
