@@ -118,9 +118,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [supabase],
   );
 
+  const changePassword = useCallback<AuthProviderContract["changePassword"]>(
+    async (currentPassword, newPassword) => {
+      // The account being verified/updated is always `user.email` — this
+      // component's own reactive session state, populated exclusively from
+      // Supabase's getSession()/onAuthStateChange above. There is no code
+      // path here that accepts an email or user id as input, so this can
+      // never be pointed at a different account no matter what a caller
+      // passes in.
+      if (!user?.email) return { error: "You must be signed in to change your password." };
+
+      // Prove the caller actually knows the CURRENT password before
+      // allowing a change — a valid session alone (e.g. a persisted
+      // "remember me" session on a shared device) isn't sufficient proof
+      // of that. Signing in again is the standard way to do this without
+      // Supabase's dashboard-level "Secure password change" reauthentication
+      // setting, which requires email/SMS delivery this project doesn't
+      // have configured yet (see passwordResetRedirect.ts for the related
+      // SMTP constraint).
+      const { error: reauthError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+      if (reauthError) return { error: "Current password is incorrect." };
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) return { error: friendlyAuthError(updateError.message) };
+
+      // Changing a password should invalidate every existing session
+      // everywhere (this device and any other device/tab already signed
+      // in) — otherwise a stolen/leaked old session would keep working
+      // right through the change. `scope: "global"` also signs out the
+      // very session performing this call, so the caller must always
+      // force a fresh login afterward.
+      await supabase.auth.signOut({ scope: "global" });
+      return { error: null };
+    },
+    [supabase, user],
+  );
+
   const value = useMemo<AuthProviderContract>(
-    () => ({ user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword }),
-    [user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword],
+    () => ({ user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword, changePassword }),
+    [user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

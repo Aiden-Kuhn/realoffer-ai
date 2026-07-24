@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, Lock, AlertTriangle } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
 import { useSetPageHeader } from "@/components/dashboard/PageHeaderContext";
 import { BuyerProfileSection } from "@/components/dashboard/BuyerProfileSection";
 import { DueDiligenceDefaultsSection } from "@/components/dashboard/DueDiligenceDefaultsSection";
+import { ChangePasswordSection } from "@/components/dashboard/ChangePasswordSection";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { usePropertyDataMode } from "@/hooks/usePropertyDataMode";
 import { useMounted } from "@/hooks/useMounted";
@@ -126,6 +127,7 @@ function SettingsForm() {
           HTML) or share a submit/error path. */}
       <BuyerProfileSection />
       <DueDiligenceDefaultsSection />
+      <ChangePasswordSection />
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
         <section className="rounded-2xl border border-border bg-surface p-6">
@@ -252,10 +254,6 @@ function SettingsForm() {
             <div>
               <p className="text-xs text-muted">Email</p>
               <p className="text-sm text-white mt-0.5">{user?.email}</p>
-            </div>
-            <div className="flex items-center gap-2.5 rounded-xl border border-border bg-surface-2 px-4 py-3 text-xs text-muted">
-              <Lock className="h-3.5 w-3.5 shrink-0" />
-              Password reset isn&apos;t available in this build yet.
             </div>
             <button
               type="button"

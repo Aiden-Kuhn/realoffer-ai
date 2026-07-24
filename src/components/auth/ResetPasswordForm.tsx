@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Sparkles, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
-import { Field, inputClasses } from "@/components/shared/Field";
+import { Sparkles, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Field } from "@/components/shared/Field";
+import { PasswordInput } from "@/components/shared/PasswordInput";
 import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/validation/schemas";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
@@ -32,41 +33,6 @@ function Card({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PasswordInput({
-  name,
-  autoComplete,
-  visible,
-  onToggleVisible,
-  register,
-}: {
-  name: "password" | "confirmPassword";
-  autoComplete: string;
-  visible: boolean;
-  onToggleVisible: () => void;
-  register: ReturnType<typeof useForm<ResetPasswordFormValues>>["register"];
-}) {
-  return (
-    <div className="relative">
-      <input
-        id={name}
-        type={visible ? "text" : "password"}
-        autoComplete={autoComplete}
-        placeholder="••••••••"
-        className={`${inputClasses} pr-11`}
-        {...register(name)}
-      />
-      <button
-        type="button"
-        onClick={onToggleVisible}
-        aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-white/40 hover:text-white transition-colors"
-      >
-        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  );
-}
-
 export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -74,8 +40,6 @@ export function ResetPasswordForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -172,16 +136,10 @@ export function ResetPasswordForm() {
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
           <Field label="New password" htmlFor="password" error={errors.password?.message} hint="At least 8 characters" required>
-            <PasswordInput name="password" autoComplete="new-password" visible={showPassword} onToggleVisible={() => setShowPassword((v) => !v)} register={register} />
+            <PasswordInput id="password" autoComplete="new-password" registration={register("password")} />
           </Field>
           <Field label="Confirm password" htmlFor="confirmPassword" error={errors.confirmPassword?.message} required>
-            <PasswordInput
-              name="confirmPassword"
-              autoComplete="new-password"
-              visible={showConfirmPassword}
-              onToggleVisible={() => setShowConfirmPassword((v) => !v)}
-              register={register}
-            />
+            <PasswordInput id="confirmPassword" autoComplete="new-password" registration={register("confirmPassword")} />
           </Field>
 
           <button

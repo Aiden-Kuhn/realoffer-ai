@@ -20,4 +20,12 @@ export interface AuthProviderContract {
   signOut(): Promise<void>;
   sendPasswordResetEmail(email: string): Promise<AuthResult>;
   updatePassword(newPassword: string): Promise<AuthResult>;
+  /**
+   * For a logged-in user changing their own password (Settings), as
+   * distinct from updatePassword above (used only from the email-recovery
+   * session on /reset-password). Deliberately takes no email/user id — the
+   * account being updated is always the current session's own user, read
+   * internally from `user.email`, never from a caller-supplied value.
+   */
+  changePassword(currentPassword: string, newPassword: string): Promise<AuthResult>;
 }

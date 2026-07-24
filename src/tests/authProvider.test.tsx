@@ -5,6 +5,8 @@ import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
 
 const resetPasswordForEmailMock = vi.fn();
 const updateUserMock = vi.fn();
+const signInWithPasswordMock = vi.fn();
+const signOutMock = vi.fn().mockResolvedValue({ error: null });
 const getSessionMock = vi.fn().mockResolvedValue({ data: { session: null } });
 const onAuthStateChangeMock = vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
 
@@ -15,6 +17,8 @@ vi.mock("@/lib/supabase/client", () => ({
       onAuthStateChange: onAuthStateChangeMock,
       resetPasswordForEmail: resetPasswordForEmailMock,
       updateUser: updateUserMock,
+      signInWithPassword: signInWithPasswordMock,
+      signOut: signOutMock,
     },
   }),
 }));
@@ -22,10 +26,19 @@ vi.mock("@/lib/supabase/client", () => ({
 afterEach(() => {
   vi.clearAllMocks();
   getSessionMock.mockResolvedValue({ data: { session: null } });
+  signOutMock.mockResolvedValue({ error: null });
 });
 
 function renderAuth() {
   return renderHook(() => useAuth(), { wrapper: AuthProvider });
+}
+
+/** For changePassword tests, which need `user` populated from the session. */
+function renderAuthedAs(email: string) {
+  getSessionMock.mockResolvedValue({
+    data: { session: { user: { id: "user-1", email, user_metadata: {}, created_at: "2026-01-01T00:00:00.000Z" } } },
+  });
+  return renderAuth();
 }
 
 describe("AuthProvider — sendPasswordResetEmail", () => {
@@ -94,5 +107,72 @@ describe("AuthProvider — updatePassword", () => {
     const response = await result.current.updatePassword("short");
 
     expect(response.error).toBe("Password should be at least 8 characters");
+  });
+});
+
+describe("AuthProvider — changePassword", () => {
+  it("re-verifies the CURRENT password using the session's own email — never a caller-supplied account", async () => {
+    signInWithPasswordMock.mockResolvedValue({ error: null });
+    updateUserMock.mockResolvedValue({ error: null });
+    const { result } = renderAuthedAs("victim@example.com");
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await result.current.changePassword("theirCurrentPassword1", "aBrandNewPassword1");
+
+    // changePassword's signature has no email/user-id parameter at all — the
+    // only account it can ever reauthenticate against is whichever one is
+    // already signed in, proven here by asserting the exact email used.
+    expect(signInWithPasswordMock).toHaveBeenCalledWith({ email: "victim@example.com", password: "theirCurrentPassword1" });
+  });
+
+  it("rejects an incorrect current password and never calls updateUser", async () => {
+    signInWithPasswordMock.mockResolvedValue({ error: { message: "Invalid login credentials" } });
+    const { result } = renderAuthedAs("jamie@example.com");
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.changePassword("wrongPassword1", "aBrandNewPassword1");
+
+    expect(response.error).toBe("Current password is incorrect.");
+    expect(updateUserMock).not.toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it("updates the password and signs out of every session (scope: global) on success", async () => {
+    signInWithPasswordMock.mockResolvedValue({ error: null });
+    updateUserMock.mockResolvedValue({ error: null });
+    const { result } = renderAuthedAs("jamie@example.com");
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.changePassword("correctCurrentPw1", "aBrandNewPassword1");
+
+    expect(response.error).toBeNull();
+    expect(updateUserMock).toHaveBeenCalledWith({ password: "aBrandNewPassword1" });
+    // Must sign out globally so any other already-open session (another
+    // device/browser, a stolen cookie) also stops working with the old
+    // credentials once the password changes.
+    expect(signOutMock).toHaveBeenCalledWith({ scope: "global" });
+  });
+
+  it("does not sign out if updateUser fails after a successful reauthentication", async () => {
+    signInWithPasswordMock.mockResolvedValue({ error: null });
+    updateUserMock.mockResolvedValue({ error: { message: "Password should be at least 8 characters" } });
+    const { result } = renderAuthedAs("jamie@example.com");
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.changePassword("correctCurrentPw1", "short");
+
+    expect(response.error).toBe("Password should be at least 8 characters");
+    expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses to run at all when there is no authenticated session", async () => {
+    const { result } = renderAuth(); // default mock: session: null
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.changePassword("anything1", "somethingElse1");
+
+    expect(response.error).toBe("You must be signed in to change your password.");
+    expect(signInWithPasswordMock).not.toHaveBeenCalled();
+    expect(updateUserMock).not.toHaveBeenCalled();
   });
 });
