@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { Sparkles, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Field, inputClasses } from "@/components/shared/Field";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -30,14 +31,29 @@ function Card({ children }: { children: React.ReactNode }) {
 type ResendState = "idle" | "sending" | "sent" | "error";
 
 /**
- * Lands here from the (unedited) Supabase "Confirm signup" email — GoTrue
- * verifies the token itself server-side and redirects here with a PKCE
- * `?code=`, which this component exchanges for a real session client-side
- * via the same browser Supabase client used everywhere else in the app (so
- * the resulting cookies are written and read exactly like any other
- * sign-in). This has to happen client-side rather than in a Route Handler
- * so it can show a loading state while in flight — a redirect-only Route
- * Handler can't render anything.
+ * Lands here from the Supabase "Confirm signup" email. Which query params
+ * actually arrive depends on the project's email template / GoTrue
+ * configuration, and both are valid, real Supabase behaviors — this
+ * supports both rather than assuming one:
+ *
+ *   - `token_hash` + `type`: what GoTrue's *hosted* /verify endpoint (i.e.
+ *     the default, unedited "Confirm signup" template's `.ConfirmationURL`)
+ *     redirects here with after verifying the token itself server-side.
+ *     Completed via `verifyOtp({ token_hash, type })`.
+ *   - `code`: a PKCE authorization code, produced when the email template
+ *     is customized to link directly at this route with `{{ .TokenHash }}`
+ *     under PKCE-flow settings, or by other Supabase-initiated flows.
+ *     Completed via `exchangeCodeForSession(code)`.
+ *
+ * token_hash+type is checked first (see AuthProvider.confirmEmail) — a
+ * fresh, valid link that happens not to carry a `code` must not be treated
+ * as invalid just because `code` is the param this route used to expect.
+ *
+ * Either way, the exchange happens client-side (not a Route Handler) via
+ * the same browser Supabase client used everywhere else in the app, so the
+ * resulting session cookies are written exactly like any other sign-in —
+ * and so this can show a loading state while in flight, which a
+ * redirect-only Route Handler couldn't render at all.
  */
 export function AuthConfirmClient() {
   const searchParams = useSearchParams();
@@ -67,17 +83,25 @@ export function AuthConfirmClient() {
     attemptedRef.current = true;
 
     // Wrapped in an async function rather than setting state directly in
-    // the effect body — even the "no code" branch goes through this, so
-    // every setState call here happens from a resolved microtask, not
-    // synchronously during the effect itself.
+    // the effect body — even the "neither param present" branch goes
+    // through this, so every setState call here happens from a resolved
+    // microtask, not synchronously during the effect itself.
     async function verify() {
+      // token_hash+type first: that's what the default, unedited "Confirm
+      // signup" template actually produces (see the doc comment above) —
+      // checking `code` first would wrongly show "invalid link" for every
+      // genuinely fresh, valid link in that configuration.
+      const tokenHash = searchParams.get("token_hash");
+      const type = searchParams.get("type") as EmailOtpType | null;
       const code = searchParams.get("code");
-      if (!code) {
+
+      const input = tokenHash && type ? { tokenHash, type } : code ? { code } : null;
+      if (!input) {
         setHasError(true);
         return;
       }
 
-      const { error } = await confirmEmail(code);
+      const { error } = await confirmEmail(input);
       if (error) {
         if (mountedRef.current) setHasError(true);
         return;

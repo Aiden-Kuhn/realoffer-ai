@@ -9,6 +9,7 @@ const signInWithPasswordMock = vi.fn();
 const signOutMock = vi.fn().mockResolvedValue({ error: null });
 const signUpMock = vi.fn();
 const exchangeCodeForSessionMock = vi.fn();
+const verifyOtpMock = vi.fn();
 const resendMock = vi.fn();
 const getSessionMock = vi.fn().mockResolvedValue({ data: { session: null } });
 const onAuthStateChangeMock = vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
@@ -24,6 +25,7 @@ vi.mock("@/lib/supabase/client", () => ({
       signOut: signOutMock,
       signUp: signUpMock,
       exchangeCodeForSession: exchangeCodeForSessionMock,
+      verifyOtp: verifyOtpMock,
       resend: resendMock,
     },
   }),
@@ -217,16 +219,17 @@ describe("AuthProvider — signUp", () => {
   });
 });
 
-describe("AuthProvider — confirmEmail", () => {
+describe("AuthProvider — confirmEmail — PKCE code format", () => {
   it("exchanges the code for a session via Supabase's exchangeCodeForSession", async () => {
     exchangeCodeForSessionMock.mockResolvedValue({ data: { session: {} }, error: null });
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const response = await result.current.confirmEmail("the-pkce-code");
+    const response = await result.current.confirmEmail({ code: "the-pkce-code" });
 
     expect(response.error).toBeNull();
     expect(exchangeCodeForSessionMock).toHaveBeenCalledWith("the-pkce-code");
+    expect(verifyOtpMock).not.toHaveBeenCalled();
   });
 
   it("surfaces an expired/invalid/already-used code as an error", async () => {
@@ -234,9 +237,53 @@ describe("AuthProvider — confirmEmail", () => {
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const response = await result.current.confirmEmail("a-stale-code");
+    const response = await result.current.confirmEmail({ code: "a-stale-code" });
 
     expect(response.error).toBe("invalid flow state, no valid flow state found");
+  });
+});
+
+describe("AuthProvider — confirmEmail — token_hash + type format", () => {
+  it("verifies via Supabase's verifyOtp — this is what GoTrue's hosted /verify redirect (the default, unedited 'Confirm signup' template) actually produces", async () => {
+    verifyOtpMock.mockResolvedValue({ data: { session: {} }, error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.confirmEmail({ tokenHash: "the-token-hash", type: "signup" });
+
+    expect(response.error).toBeNull();
+    expect(verifyOtpMock).toHaveBeenCalledWith({ token_hash: "the-token-hash", type: "signup" });
+    expect(exchangeCodeForSessionMock).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a genuinely expired token as an error", async () => {
+    verifyOtpMock.mockResolvedValue({ data: { session: null }, error: { message: "Token has expired or is invalid" } });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.confirmEmail({ tokenHash: "an-expired-token", type: "signup" });
+
+    expect(response.error).toBe("Token has expired or is invalid");
+  });
+
+  it("surfaces a reused (already-verified) token as an error", async () => {
+    verifyOtpMock.mockResolvedValue({ data: { session: null }, error: { message: "Token has expired or is invalid" } });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.confirmEmail({ tokenHash: "an-already-used-token", type: "signup" });
+
+    expect(response.error).toBe("Token has expired or is invalid");
+  });
+
+  it("passes through whatever EmailOtpType value the link carries (e.g. 'email', not just 'signup')", async () => {
+    verifyOtpMock.mockResolvedValue({ data: { session: {} }, error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await result.current.confirmEmail({ tokenHash: "the-token-hash", type: "email" });
+
+    expect(verifyOtpMock).toHaveBeenCalledWith({ token_hash: "the-token-hash", type: "email" });
   });
 });
 

@@ -161,8 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const confirmEmail = useCallback<AuthProviderContract["confirmEmail"]>(
-    async (code) => {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+    async (input) => {
+      const { error } =
+        "code" in input
+          ? await supabase.auth.exchangeCodeForSession(input.code)
+          : await supabase.auth.verifyOtp({ token_hash: input.tokenHash, type: input.type });
       return { error: error ? friendlyAuthError(error.message) : null };
     },
     [supabase],

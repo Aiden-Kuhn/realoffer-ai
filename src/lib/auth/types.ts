@@ -1,3 +1,5 @@
+import type { EmailOtpType } from "@supabase/supabase-js";
+
 /**
  * App-facing user shape, derived from Supabase's `User` object so consuming
  * components never touch the Supabase SDK types directly.
@@ -29,12 +31,16 @@ export interface AuthProviderContract {
    */
   changePassword(currentPassword: string, newPassword: string): Promise<AuthResult>;
   /**
-   * Exchanges the PKCE `code` from a Supabase email link (currently used
-   * for signup confirmation, see AuthConfirmClient) for a real session.
-   * Deliberately takes only the code — never an email/user id — since the
-   * resulting session is whichever account the code was issued for; there
-   * is no way to point this at a different account.
+   * Completes email verification (see AuthConfirmClient) for whichever of
+   * Supabase's two link formats actually arrived: a PKCE `code` (exchanged
+   * via exchangeCodeForSession) or a `token_hash`+`type` pair (verified via
+   * verifyOtp — this is what GoTrue's *hosted* confirmation-link redirect
+   * produces, which is what the unedited default "Confirm signup" email
+   * template points at). Deliberately takes only these — never an email or
+   * user id — since the resulting session is whichever account the
+   * code/token was issued for; there is no way to point this at a
+   * different account.
    */
-  confirmEmail(code: string): Promise<AuthResult>;
+  confirmEmail(input: { code: string } | { tokenHash: string; type: EmailOtpType }): Promise<AuthResult>;
   resendVerificationEmail(email: string): Promise<AuthResult>;
 }
