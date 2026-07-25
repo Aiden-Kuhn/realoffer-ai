@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { getPasswordResetRedirectUrl } from "@/lib/auth/passwordResetRedirect";
+import { getEmailConfirmRedirectUrl } from "@/lib/auth/emailConfirmRedirect";
 import type { AppUser, AuthProviderContract, AuthResult } from "@/lib/auth/types";
 
 const AuthContext = createContext<AuthProviderContract | null>(null);
@@ -73,6 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             full_name: fullName?.trim() ?? "",
             company_name: companyName?.trim() ?? "",
           },
+          // Without this, GoTrue's confirmation link falls back to the
+          // dashboard's Site URL — landing a freshly verified user on the
+          // marketing homepage instead of AuthConfirmClient, which is what
+          // actually exchanges the code for a session and signs them in.
+          emailRedirectTo: getEmailConfirmRedirectUrl(),
         },
       });
       if (error) return { error: friendlyAuthError(error.message), needsEmailConfirmation: false };
@@ -154,9 +160,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [supabase, user],
   );
 
+  const confirmEmail = useCallback<AuthProviderContract["confirmEmail"]>(
+    async (code) => {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      return { error: error ? friendlyAuthError(error.message) : null };
+    },
+    [supabase],
+  );
+
+  const resendVerificationEmail = useCallback<AuthProviderContract["resendVerificationEmail"]>(
+    async (email) => {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+        options: { emailRedirectTo: getEmailConfirmRedirectUrl() },
+      });
+      return { error: error ? friendlyAuthError(error.message) : null };
+    },
+    [supabase],
+  );
+
   const value = useMemo<AuthProviderContract>(
-    () => ({ user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword, changePassword }),
-    [user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword, changePassword],
+    () => ({
+      user,
+      isLoading,
+      signIn,
+      signUp,
+      signOut,
+      sendPasswordResetEmail,
+      updatePassword,
+      changePassword,
+      confirmEmail,
+      resendVerificationEmail,
+    }),
+    [user, isLoading, signIn, signUp, signOut, sendPasswordResetEmail, updatePassword, changePassword, confirmEmail, resendVerificationEmail],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

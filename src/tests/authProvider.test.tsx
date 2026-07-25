@@ -7,6 +7,9 @@ const resetPasswordForEmailMock = vi.fn();
 const updateUserMock = vi.fn();
 const signInWithPasswordMock = vi.fn();
 const signOutMock = vi.fn().mockResolvedValue({ error: null });
+const signUpMock = vi.fn();
+const exchangeCodeForSessionMock = vi.fn();
+const resendMock = vi.fn();
 const getSessionMock = vi.fn().mockResolvedValue({ data: { session: null } });
 const onAuthStateChangeMock = vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } });
 
@@ -19,6 +22,9 @@ vi.mock("@/lib/supabase/client", () => ({
       updateUser: updateUserMock,
       signInWithPassword: signInWithPasswordMock,
       signOut: signOutMock,
+      signUp: signUpMock,
+      exchangeCodeForSession: exchangeCodeForSessionMock,
+      resend: resendMock,
     },
   }),
 }));
@@ -174,5 +180,89 @@ describe("AuthProvider — changePassword", () => {
     expect(response.error).toBe("You must be signed in to change your password.");
     expect(signInWithPasswordMock).not.toHaveBeenCalled();
     expect(updateUserMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("AuthProvider — signUp", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("passes an emailRedirectTo pointing at /auth/confirm — without it GoTrue falls back to the Site URL instead of landing on AuthConfirmClient", async () => {
+    signUpMock.mockResolvedValue({ data: { user: { id: "user-1" }, session: null }, error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await result.current.signUp({ email: "jamie@example.com", password: "correcthorse1", fullName: "Jamie Rivera" });
+
+    expect(signUpMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "jamie@example.com",
+        options: expect.objectContaining({ emailRedirectTo: "http://localhost:3000/auth/confirm" }),
+      }),
+    );
+  });
+
+  it("uses the production URL when built for production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    signUpMock.mockResolvedValue({ data: { user: { id: "user-1" }, session: null }, error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await result.current.signUp({ email: "jamie@example.com", password: "correcthorse1" });
+
+    expect(signUpMock).toHaveBeenCalledWith(
+      expect.objectContaining({ options: expect.objectContaining({ emailRedirectTo: "https://realoffer-ai.vercel.app/auth/confirm" }) }),
+    );
+  });
+});
+
+describe("AuthProvider — confirmEmail", () => {
+  it("exchanges the code for a session via Supabase's exchangeCodeForSession", async () => {
+    exchangeCodeForSessionMock.mockResolvedValue({ data: { session: {} }, error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.confirmEmail("the-pkce-code");
+
+    expect(response.error).toBeNull();
+    expect(exchangeCodeForSessionMock).toHaveBeenCalledWith("the-pkce-code");
+  });
+
+  it("surfaces an expired/invalid/already-used code as an error", async () => {
+    exchangeCodeForSessionMock.mockResolvedValue({ data: { session: null }, error: { message: "invalid flow state, no valid flow state found" } });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.confirmEmail("a-stale-code");
+
+    expect(response.error).toBe("invalid flow state, no valid flow state found");
+  });
+});
+
+describe("AuthProvider — resendVerificationEmail", () => {
+  it("calls Supabase's resend with type: signup, a trimmed email, and the same /auth/confirm redirect used at signup", async () => {
+    resendMock.mockResolvedValue({ error: null });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.resendVerificationEmail("  jamie@example.com  ");
+
+    expect(response.error).toBeNull();
+    expect(resendMock).toHaveBeenCalledWith({
+      type: "signup",
+      email: "jamie@example.com",
+      options: { emailRedirectTo: "http://localhost:3000/auth/confirm" },
+    });
+  });
+
+  it("surfaces a genuine failure as an error", async () => {
+    resendMock.mockResolvedValue({ error: { message: "Email rate limit exceeded" } });
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const response = await result.current.resendVerificationEmail("jamie@example.com");
+
+    expect(response.error).toBe("Email rate limit exceeded");
   });
 });

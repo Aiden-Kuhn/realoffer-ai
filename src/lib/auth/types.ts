@@ -28,4 +28,13 @@ export interface AuthProviderContract {
    * internally from `user.email`, never from a caller-supplied value.
    */
   changePassword(currentPassword: string, newPassword: string): Promise<AuthResult>;
+  /**
+   * Exchanges the PKCE `code` from a Supabase email link (currently used
+   * for signup confirmation, see AuthConfirmClient) for a real session.
+   * Deliberately takes only the code — never an email/user id — since the
+   * resulting session is whichever account the code was issued for; there
+   * is no way to point this at a different account.
+   */
+  confirmEmail(code: string): Promise<AuthResult>;
+  resendVerificationEmail(email: string): Promise<AuthResult>;
 }

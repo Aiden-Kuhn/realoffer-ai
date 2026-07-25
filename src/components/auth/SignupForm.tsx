@@ -57,7 +57,7 @@ export function SignupForm() {
           </span>
           <h1 className="mt-4 text-xl font-semibold text-white">Check your email</h1>
           <p className="mt-1.5 text-sm text-muted leading-relaxed">
-            We sent a confirmation link to your email address. Click it to activate your account, then log in.
+            We sent a confirmation link to your email address. Click it to activate your account — you&apos;ll be signed in automatically.
           </p>
           <Link
             href="/login"
