@@ -7,13 +7,18 @@ import { LoginForm } from "@/components/auth/LoginForm";
 const pushMock = vi.fn();
 const signInMock = vi.fn();
 let searchParamsValue = new URLSearchParams();
+// Mutable reactive auth state, standing in for AuthProvider's own
+// user/isLoading — mutated mid-test + rerendered to simulate a session
+// becoming visible after the component already mounted.
+let mockUser: { id: string; email: string } | null = null;
+let mockAuthLoading = false;
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useSearchParams: () => searchParamsValue,
 }));
 vi.mock("@/lib/auth/AuthProvider", () => ({
-  useAuth: () => ({ signIn: signInMock }),
+  useAuth: () => ({ signIn: signInMock, user: mockUser, isLoading: mockAuthLoading }),
 }));
 
 describe("LoginForm — forgot password link", () => {
@@ -26,7 +31,10 @@ describe("LoginForm — forgot password link", () => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   searchParamsValue = new URLSearchParams();
+  mockUser = null;
+  mockAuthLoading = false;
 });
 
 async function fillAndSubmit() {
@@ -64,5 +72,47 @@ describe("LoginForm — post-login redirect", () => {
     await fillAndSubmit();
     expect(pushMock).not.toHaveBeenCalled();
     expect(screen.getByText("Incorrect email or password.")).toBeInTheDocument();
+  });
+});
+
+describe("LoginForm — defensive redirect for an already-authenticated visitor", () => {
+  // app/login/page.tsx's server-side guard is the primary defense; this is
+  // the client-side fallback for a session that becomes visible slightly
+  // after that server check already ran (e.g. arriving here moments after
+  // an /auth/confirm email-verification redirect) — this is exactly the
+  // reported bug: verification succeeds, but the user still sees a login
+  // step instead of being let straight through.
+  it("does nothing while a session is still loading — a loading auth state is not the same as unauthenticated", () => {
+    const fakeLocation = { ...window.location, href: "" };
+    vi.stubGlobal("location", fakeLocation);
+    mockUser = null;
+    mockAuthLoading = true;
+
+    render(<LoginForm />);
+
+    expect(fakeLocation.href).toBe("");
+  });
+
+  it("redirects immediately to the dashboard once an authenticated user is detected, without requiring a Login click", async () => {
+    const fakeLocation = { ...window.location, href: "" };
+    vi.stubGlobal("location", fakeLocation);
+    mockUser = { id: "user-1", email: "jamie@example.com" };
+    mockAuthLoading = false;
+
+    render(<LoginForm />);
+
+    await vi.waitFor(() => expect(fakeLocation.href).toBe("/dashboard"));
+  });
+
+  it("honors a safe redirectTo target when redirecting an already-authenticated visitor", async () => {
+    const fakeLocation = { ...window.location, href: "" };
+    vi.stubGlobal("location", fakeLocation);
+    searchParamsValue = new URLSearchParams({ redirectTo: "/analyze" });
+    mockUser = { id: "user-1", email: "jamie@example.com" };
+    mockAuthLoading = false;
+
+    render(<LoginForm />);
+
+    await vi.waitFor(() => expect(fakeLocation.href).toBe("/analyze"));
   });
 });

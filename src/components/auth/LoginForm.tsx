@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -14,7 +14,7 @@ import { resolveSafeRedirect } from "@/lib/auth/redirectTarget";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuth();
+  const { signIn, user, isLoading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -23,6 +23,22 @@ export function LoginForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
+
+  // app/login/page.tsx already redirects an already-authenticated visitor
+  // server-side before any HTML ships — this is a client-side fallback
+  // only, for a session that becomes valid (or newly visible) after that
+  // server check already ran, e.g. arriving here moments after an
+  // /auth/confirm email-verification redirect. Mirrors DashboardShell's
+  // own client-side fallback for the equivalent opposite case. A hard
+  // navigation, not router.push: this specifically exists to route around
+  // a stale/pre-session read, so the destination's own server-side guard
+  // needs a genuinely fresh request, not a client-side transition that
+  // could reuse cached data from before the session existed.
+  useEffect(() => {
+    if (!authLoading && user) {
+      window.location.href = resolveSafeRedirect(searchParams.get("redirectTo"));
+    }
+  }, [authLoading, user, searchParams]);
 
   async function onSubmit(values: LoginFormValues) {
     setFormError(null);

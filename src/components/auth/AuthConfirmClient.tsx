@@ -30,6 +30,15 @@ function Card({ children }: { children: React.ReactNode }) {
 
 type ResendState = "idle" | "sending" | "sent" | "error";
 
+/** How long to keep waiting for a session to actually appear before
+ * concluding the link is genuinely bad. Generous on purpose: GoTrue's
+ * hosted /verify endpoint (see the doc comment below) can confirm the
+ * email and establish a session slightly out-of-band from this
+ * component's own confirmEmail() call, and that session can take a beat
+ * to become visible — a session missing on the very first check is not
+ * the same as a genuinely invalid or expired link. */
+const SESSION_WAIT_TIMEOUT_MS = 6000;
+
 /**
  * Lands here from the Supabase "Confirm signup" email. Which query params
  * actually arrive depends on the project's email template / GoTrue
@@ -49,6 +58,17 @@ type ResendState = "idle" | "sending" | "sent" | "error";
  * fresh, valid link that happens not to carry a `code` must not be treated
  * as invalid just because `code` is the param this route used to expect.
  *
+ * Whether the session actually exists is deliberately NOT decided solely by
+ * this component's own confirmEmail() call succeeding or failing. GoTrue's
+ * hosted verification can genuinely confirm the email and establish a
+ * session even when this specific call reports an error — e.g. a token
+ * already partially consumed by GoTrue's own hosted /verify redirect a
+ * moment earlier. The real source of truth is `user` from useAuth(), which
+ * AuthProvider keeps in sync via its own onAuthStateChange subscription
+ * (SIGNED_IN, INITIAL_SESSION, etc.) independent of this call. So: attempt
+ * the call, then watch `user` — navigate the instant it appears, and only
+ * give up after a bounded wait with no session ever showing up.
+ *
  * Either way, the exchange happens client-side (not a Route Handler) via
  * the same browser Supabase client used everywhere else in the app, so the
  * resulting session cookies are written exactly like any other sign-in —
@@ -57,15 +77,20 @@ type ResendState = "idle" | "sending" | "sent" | "error";
  */
 export function AuthConfirmClient() {
   const searchParams = useSearchParams();
-  const { confirmEmail, resendVerificationEmail } = useAuth();
+  const { user, confirmEmail, resendVerificationEmail } = useAuth();
   const [hasError, setHasError] = useState(false);
-  // Guards the exchange itself against firing twice — a PKCE code is
-  // single-use, so a second attempt (e.g. React Strict Mode's dev-only
-  // double-invoke of effects) would always fail even though the first one
-  // already succeeded, which would wrongly flip a genuinely successful
-  // verification into an "invalid link" error.
+  // Guards the exchange itself against firing twice — a PKCE code (or an
+  // OTP token) is single-use, so a second attempt (e.g. React Strict
+  // Mode's dev-only double-invoke of effects) would always fail even
+  // though the first one already succeeded, which would wrongly flip a
+  // genuinely successful verification into an "invalid link" error.
   const attemptedRef = useRef(false);
   const mountedRef = useRef(true);
+  const navigatedRef = useRef(false);
+  // Whether there was actually something to attempt (token_hash+type or
+  // code). If not, there's nothing to wait for — the link is unambiguously
+  // bad and the bounded wait below is skipped entirely.
+  const hadCallableInputRef = useRef(false);
 
   const [resendEmail, setResendEmail] = useState("");
   const [resendState, setResendState] = useState<ResendState>("idle");
@@ -78,6 +103,7 @@ export function AuthConfirmClient() {
     };
   }, []);
 
+  // Attempt the exchange/verify exactly once.
   useEffect(() => {
     if (attemptedRef.current) return;
     attemptedRef.current = true;
@@ -97,27 +123,51 @@ export function AuthConfirmClient() {
 
       const input = tokenHash && type ? { tokenHash, type } : code ? { code } : null;
       if (!input) {
-        setHasError(true);
-        return;
-      }
-
-      const { error } = await confirmEmail(input);
-      if (error) {
         if (mountedRef.current) setHasError(true);
         return;
       }
-      // Full navigation, not router.push: the session was just established
-      // via cookies the browser Supabase client already wrote — a hard
-      // navigation guarantees app/dashboard/layout.tsx's server-side guard
-      // sees it on the very next request instead of racing a client-side
-      // transition. Deliberately unguarded by mountedRef: this is a real
-      // browser navigation, not a React state update, and skipping it would
-      // strand a genuinely-verified user on this screen forever.
-      window.location.href = "/dashboard";
+
+      hadCallableInputRef.current = true;
+      const { error } = await confirmEmail(input);
+      // A genuine expiration error is unambiguous — fail immediately
+      // rather than waiting out the full bounded window for nothing. Any
+      // other error (or success) falls through to the reactive `user`
+      // watcher below, since the session may still show up regardless of
+      // what this specific call reported.
+      if (error && /expired/i.test(error) && mountedRef.current) {
+        setHasError(true);
+      }
     }
 
     verify();
   }, [searchParams, confirmEmail]);
+
+  // The real success signal: navigate the instant a session actually
+  // shows up, from *any* source — the call above succeeding directly, or
+  // a slightly-delayed SIGNED_IN/INITIAL_SESSION reaching AuthProvider's
+  // own listener.
+  useEffect(() => {
+    if (!user || navigatedRef.current) return;
+    navigatedRef.current = true;
+    // Full navigation, not router.push: a hard navigation guarantees
+    // app/dashboard/layout.tsx's server-side guard sees the now-persisted
+    // session cookie on the very next request instead of racing a
+    // client-side transition.
+    window.location.href = "/dashboard";
+  }, [user]);
+
+  // Bounded wait for a session that hasn't shown up *yet*. Only concludes
+  // failure once this window elapses with no session ever appearing —
+  // never on the first render just because `user` is still null.
+  useEffect(() => {
+    if (user || navigatedRef.current) return;
+    const timeout = setTimeout(() => {
+      if (mountedRef.current && !navigatedRef.current && hadCallableInputRef.current) {
+        setHasError(true);
+      }
+    }, SESSION_WAIT_TIMEOUT_MS);
+    return () => clearTimeout(timeout);
+  }, [user]);
 
   async function handleResend(event: FormEvent) {
     event.preventDefault();
