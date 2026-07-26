@@ -260,6 +260,10 @@ function SettingsForm() {
               Need help?{" "}
               <Link href="/contact" className="text-white hover:text-accent-3 font-medium transition-colors">
                 Contact & Support
+              </Link>{" "}
+              &middot;{" "}
+              <Link href="/getting-started" className="text-white hover:text-accent-3 font-medium transition-colors">
+                Getting Started
               </Link>
             </p>
             <p className="text-xs text-muted">

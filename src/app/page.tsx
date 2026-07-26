@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/sections/Hero";
@@ -8,7 +10,25 @@ import { Pricing } from "@/components/sections/Pricing";
 import { FAQ } from "@/components/sections/FAQ";
 import { CTA } from "@/components/sections/CTA";
 
-export default function Home() {
+/**
+ * Server-side check so an already-authenticated visitor who lands here (an
+ * old tab, a stale bookmark, clicking a brand logo elsewhere in the app) is
+ * bounced to the dashboard instead of seeing the full marketing pitch again
+ * on every visit. Mirrors the guard in app/login/page.tsx. New/logged-out
+ * visitors still see this page exactly as before — nothing below is
+ * changed. Returning users who want to revisit this content intentionally
+ * can do so from /getting-started.
+ */
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/dashboard");
+  }
+
   return (
     <>
       <Navbar />

@@ -99,6 +99,14 @@ export function ContactSupportPage({ isAuthenticated, userEmail, userFullName }:
             >
               Email Support
             </a>
+            {isAuthenticated ? (
+              <Link
+                href="/getting-started"
+                className="inline-flex w-full sm:w-auto items-center justify-center h-11 rounded-full border border-border px-6 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong transition-colors"
+              >
+                Getting Started guide
+              </Link>
+            ) : null}
             <Link
               href={isAuthenticated ? "/dashboard" : "/"}
               className="inline-flex w-full sm:w-auto items-center justify-center h-11 rounded-full border border-border px-6 text-sm font-medium text-white/80 hover:text-white hover:border-border-strong transition-colors"
