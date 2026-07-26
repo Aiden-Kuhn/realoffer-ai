@@ -3,8 +3,13 @@ import { Sparkles } from "lucide-react";
 
 // Working in-page links only. Pages that don't exist yet in this demo are
 // listed as plain, clearly non-interactive text below rather than as dead
-// links — see the "Coming soon" labeling in the render.
-const footerLinks = {
+// links — see the "Coming soon" labeling in the render. A link can also
+// carry soon: true to sit inside an otherwise-live column (e.g. "Security"
+// living alongside the now-real Privacy Policy / Terms of Service links)
+// rather than forcing a whole separate "Legal" column just for one item.
+type FooterLink = { label: string; href: string } | { label: string; soon: true };
+
+const footerLinks: Record<string, FooterLink[]> = {
   Product: [
     { label: "Features", href: "#features" },
     { label: "How It Works", href: "#how-it-works" },
@@ -12,12 +17,16 @@ const footerLinks = {
     { label: "FAQ", href: "#faq" },
   ],
   Support: [{ label: "Contact & Support", href: "/contact" }],
+  Legal: [
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Security", soon: true },
+  ],
 };
 
 const comingSoon = {
   Company: ["About", "Careers", "Blog"],
   Resources: ["Deal Analysis Guide", "Investor Glossary", "API Docs"],
-  Legal: ["Privacy Policy", "Terms of Service", "Security"],
 };
 
 export function Footer() {
@@ -44,16 +53,25 @@ export function Footer() {
             <div key={category}>
               <h4 className="text-sm font-semibold text-white">{category}</h4>
               <ul className="mt-4 flex flex-col gap-3">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-muted hover:text-white transition-colors"
-                    >
+                {links.map((link) =>
+                  "href" in link ? (
+                    <li key={link.label}>
+                      <a
+                        href={link.href}
+                        className="text-sm text-muted hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li key={link.label} className="flex items-center gap-1.5 text-sm text-muted/50 cursor-default select-none">
                       {link.label}
-                    </a>
-                  </li>
-                ))}
+                      <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted/70">
+                        Soon
+                      </span>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
           ))}

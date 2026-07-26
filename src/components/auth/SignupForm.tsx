@@ -109,10 +109,22 @@ export function SignupForm() {
             <input id="confirmPassword" type="password" autoComplete="new-password" placeholder="••••••••" className={inputClasses} {...register("confirmPassword")} />
           </Field>
 
+          <p className="text-center text-xs text-muted leading-relaxed">
+            By creating an account, you agree to the{" "}
+            <Link href="/terms" className="text-white hover:text-accent-3 font-medium">
+              Terms of Service
+            </Link>{" "}
+            and acknowledge the{" "}
+            <Link href="/privacy" className="text-white hover:text-accent-3 font-medium">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-2 inline-flex items-center justify-center h-11 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-60"
+            className="inline-flex items-center justify-center h-11 rounded-full bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-60"
           >
             {isSubmitting ? "Creating account…" : "Create account"}
           </button>

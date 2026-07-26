@@ -109,6 +109,15 @@ export function LoginForm() {
           Contact support
         </Link>
       </p>
+      <p className="mt-2 text-center text-xs text-muted">
+        <Link href="/terms" className="text-muted hover:text-white transition-colors">
+          Terms of Service
+        </Link>{" "}
+        &middot;{" "}
+        <Link href="/privacy" className="text-muted hover:text-white transition-colors">
+          Privacy Policy
+        </Link>
+      </p>
     </div>
   );
 }

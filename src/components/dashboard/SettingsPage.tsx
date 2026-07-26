@@ -262,6 +262,15 @@ function SettingsForm() {
                 Contact & Support
               </Link>
             </p>
+            <p className="text-xs text-muted">
+              <Link href="/terms" className="text-muted hover:text-white transition-colors">
+                Terms of Service
+              </Link>{" "}
+              &middot;{" "}
+              <Link href="/privacy" className="text-muted hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+            </p>
             <button
               type="button"
               onClick={handleSignOut}
