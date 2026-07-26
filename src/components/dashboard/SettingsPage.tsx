@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, AlertTriangle } from "lucide-react";
@@ -255,6 +256,12 @@ function SettingsForm() {
               <p className="text-xs text-muted">Email</p>
               <p className="text-sm text-white mt-0.5">{user?.email}</p>
             </div>
+            <p className="text-xs text-muted">
+              Need help?{" "}
+              <Link href="/contact" className="text-white hover:text-accent-3 font-medium transition-colors">
+                Contact & Support
+              </Link>
+            </p>
             <button
               type="button"
               onClick={handleSignOut}

@@ -11,10 +11,11 @@ const footerLinks = {
     { label: "Pricing", href: "#pricing" },
     { label: "FAQ", href: "#faq" },
   ],
+  Support: [{ label: "Contact & Support", href: "/contact" }],
 };
 
 const comingSoon = {
-  Company: ["About", "Careers", "Blog", "Contact"],
+  Company: ["About", "Careers", "Blog"],
   Resources: ["Deal Analysis Guide", "Investor Glossary", "API Docs"],
   Legal: ["Privacy Policy", "Terms of Service", "Security"],
 };

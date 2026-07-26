@@ -122,6 +122,36 @@ export const changePasswordSchema = z
 
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
+export const SUPPORT_CATEGORIES = [
+  "Account Help",
+  "Property Analysis",
+  "Saved Deals",
+  "Contracts",
+  "Billing",
+  "Technical Issue",
+  "Feature Request",
+  "Other",
+] as const;
+
+export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number];
+
+export const CONTACT_MESSAGE_MAX_LENGTH = 2000;
+
+export const contactSupportSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name."),
+  email: z.string().trim().email("Enter a valid email address."),
+  subject: z.string().trim().min(1, "Enter a subject."),
+  category: z.enum(SUPPORT_CATEGORIES, { error: "Choose a category." }),
+  message: z.string().trim().min(1, "Enter a message.").max(CONTACT_MESSAGE_MAX_LENGTH, `Message must be ${CONTACT_MESSAGE_MAX_LENGTH} characters or fewer.`),
+  // Honeypot: real visitors never see or fill this field (see
+  // ContactSupportForm's visually-hidden, aria-hidden markup). Deliberately
+  // unvalidated — any non-empty value here just marks the submission as a
+  // bot, handled in the form's submit handler, not as a validation error.
+  company: z.string().optional(),
+});
+
+export type ContactSupportFormValues = z.infer<typeof contactSupportSchema>;
+
 export const settingsSchema = z.object({
   fullName: z.string().trim().optional(),
   companyName: z.string().trim().optional(),

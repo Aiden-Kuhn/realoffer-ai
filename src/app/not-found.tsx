@@ -22,6 +22,9 @@ export default function NotFound() {
         <ArrowLeft className="h-4 w-4" />
         Back to home
       </Button>
+      <Link href="/contact" className="mt-4 text-sm text-muted hover:text-white transition-colors">
+        Contact support
+      </Link>
     </div>
   );
 }

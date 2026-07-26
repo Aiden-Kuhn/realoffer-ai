@@ -103,6 +103,12 @@ export function LoginForm() {
           Sign up
         </Link>
       </p>
+      <p className="mt-2 text-center text-xs text-muted">
+        Need help?{" "}
+        <Link href="/contact" className="text-muted hover:text-white transition-colors">
+          Contact support
+        </Link>
+      </p>
     </div>
   );
 }
