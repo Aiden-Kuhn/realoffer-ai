@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Mail, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, Sparkles } from "lucide-react";
 import { ContactSupportForm } from "@/components/support/ContactSupportForm";
 import { SupportFAQAccordion } from "@/components/support/SupportFAQAccordion";
 import { SUPPORT_EMAIL } from "@/lib/support/submitSupportRequest";
@@ -18,6 +18,14 @@ export function ContactSupportPage({ isAuthenticated, userEmail, userFullName }:
   return (
     <div className="min-h-dvh bg-background px-4 py-12 sm:py-16">
       <div className="mx-auto w-full max-w-2xl flex flex-col gap-10">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 self-start text-sm text-muted hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 rounded-full px-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to dashboard
+        </Link>
+
         <Link href="/" className="flex items-center gap-2 justify-center">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent via-accent-2 to-accent-3">
             <Sparkles className="h-4 w-4 text-white" strokeWidth={2.5} />
