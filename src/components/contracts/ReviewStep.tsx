@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Info, FileDown } from "lucide-react";
 import { formatCents } from "@/lib/calculations/money";
-import type { ContractFormData, PartyInfo } from "@/lib/contracts/types";
+import { PROPERTY_CONDITION_LABELS, type ContractFormData, type PartyInfo } from "@/lib/contracts/types";
 import type { ContractStatus } from "@/lib/contracts/types";
 
 function dash(value: string | null | undefined): string {
@@ -97,7 +97,10 @@ export function ReviewStep({ formData, contractId, contractStatus, issues, warni
         <ReviewSection title="Due Diligence">
           <ReviewRow label="Inspection period" value={formData.dueDiligence.inspectionPeriodDays !== null ? `${formData.dueDiligence.inspectionPeriodDays} days` : "—"} />
           <ReviewRow label="Inspection deadline" value={dash(formData.dueDiligence.inspectionDeadline)} />
-          <ReviewRow label="Property condition" value={dash(formData.dueDiligence.propertyCondition)} />
+          <ReviewRow
+            label="Property condition"
+            value={formData.dueDiligence.propertyCondition ? PROPERTY_CONDITION_LABELS[formData.dueDiligence.propertyCondition] : "—"}
+          />
         </ReviewSection>
 
         {formData.assignment ? (

@@ -1,7 +1,7 @@
 import "server-only";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatCents } from "@/lib/calculations/money";
-import type { ContractFormData, PartyInfo } from "@/lib/contracts/types";
+import { PROPERTY_CONDITION_LABELS, type ContractFormData, type PartyInfo } from "@/lib/contracts/types";
 
 /**
  * The document model for the general purchase agreement PDF. Every string
@@ -132,7 +132,7 @@ export function ContractDocument({ formData, templateLabel, templateVersion, dis
           <Row label="Property access terms" value={dd.propertyAccessTerms} />
           <Row label="Title review period" value={dd.titleReviewPeriodDays !== null ? `${dd.titleReviewPeriodDays} days` : ""} />
           <Row label="Survey required" value={dd.surveyRequired ? "Yes" : "No"} />
-          <Row label="Property condition" value={dd.propertyCondition ?? ""} />
+          <Row label="Property condition" value={dd.propertyCondition ? PROPERTY_CONDITION_LABELS[dd.propertyCondition] : ""} />
           <Row label="Required seller disclosures" value={dd.requiredSellerDisclosures} />
           <Row label="Due diligence notes" value={dd.dueDiligenceNotes} />
         </View>

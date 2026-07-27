@@ -95,10 +95,16 @@ export function DealWorkspace({ id }: { id: string }) {
   return <DealWorkspaceContent key={deal.id} deal={deal} isSaved={isSaved} />;
 }
 
-function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean }) {
+function DealWorkspaceContent({ deal, isSaved: initialIsSaved }: { deal: Deal; isSaved: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const [isCreatingContract, setIsCreatingContract] = useState(false);
+  // Seeded from the initial lookup, then flipped locally on a successful
+  // save — useDeal() fetches once per id and deliberately doesn't re-fetch
+  // reactively (see its doc comment), so without this a brand-new deal's
+  // first save would leave the "Unsaved analysis" badge and Save button
+  // showing until the next full page load, even though the save succeeded.
+  const [isSaved, setIsSaved] = useState(initialIsSaved);
 
   const [property, setProperty] = useState<PropertyRecord>(deal.property);
   const [bedroomsOverride, setBedroomsOverride] = useState<number | null>(deal.bedroomsOverride ?? null);
@@ -192,6 +198,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
     try {
       await dealRepository.save(toSave);
       clearDraftDeal(deal.id);
+      setIsSaved(true);
       setJustSaved(true);
       window.setTimeout(() => setJustSaved(false), 2000);
     } catch (error) {
@@ -438,7 +445,7 @@ function DealWorkspaceContent({ deal, isSaved }: { deal: Deal; isSaved: boolean 
         ) : null}
       </WorkspaceSectionContent>
 
-      <Disclaimers />
+      <Disclaimers isLiveData={property.source === "rentcast"} />
 
       <ConfirmDialog
         open={deleteOpen}

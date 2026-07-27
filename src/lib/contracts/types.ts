@@ -82,6 +82,14 @@ export type PurchaseTermsSection = {
 export const PROPERTY_CONDITIONS = ["as_is", "seller_to_repair", "other"] as const;
 export type PropertyConditionOption = (typeof PROPERTY_CONDITIONS)[number];
 
+/** Human-readable labels for the Review screen and generated PDF — without
+ * this, both rendered the raw stored value (e.g. "as_is") verbatim. */
+export const PROPERTY_CONDITION_LABELS: Record<PropertyConditionOption, string> = {
+  as_is: "As-is",
+  seller_to_repair: "Seller to repair items",
+  other: "Other",
+};
+
 export type DueDiligenceSection = {
   inspectionPeriodDays: number | null;
   inspectionDeadline: string | null;

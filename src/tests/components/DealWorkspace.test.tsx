@@ -237,6 +237,28 @@ describe("DealWorkspace — state preservation while switching sections", () => 
   });
 });
 
+describe("DealWorkspace — saving a brand-new (unsaved) analysis", () => {
+  it("flips from 'Unsaved analysis' to Duplicate/Delete immediately after a successful save, without a reload", async () => {
+    const deal = makeMockDeal();
+    vi.mocked(useDeal).mockReturnValue({ deal, isSaved: false, isLoading: false });
+    vi.mocked(buyerProfileRepository.get).mockResolvedValue(null);
+    vi.mocked(contractDefaultsRepository.getDueDiligenceDefaults).mockResolvedValue(null);
+    vi.mocked(dealRepository.save).mockResolvedValue(deal);
+    const user = userEvent.setup();
+    render(<DealWorkspace id={deal.id} />);
+
+    expect(screen.getByText("Unsaved analysis")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Duplicate" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save Property" }));
+
+    expect(dealRepository.save).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("button", { name: "Duplicate" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.queryByText("Unsaved analysis")).not.toBeInTheDocument();
+  });
+});
+
 describe("DealWorkspace — no unnecessary work when switching sections", () => {
   it("never refetches property data just from switching between sections", async () => {
     const { user } = await renderWorkspace();
